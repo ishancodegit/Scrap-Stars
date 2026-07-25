@@ -329,6 +329,23 @@ const ART = {
       fillInk(ctx, '#fb7185', 1.5);
     }
   },
+  kenji(ctx, d, R) {
+    Sprites._head(ctx, d, R);
+    const hy = -R * 0.72;
+    // Topknot and a headband.
+    circlePath(ctx, -R * 0.1, hy - R * 0.95, R * 0.26);
+    fillInk(ctx, d.hair, 2.5);
+    ctx.beginPath();
+    ctx.arc(0, hy - R * 0.08, R * 0.8, Math.PI * 1.05, Math.PI * 1.95);
+    fillInk(ctx, d.hair, 2.5);
+    shape(ctx, [[-R * 0.85, hy - R * 0.28], [R * 0.85, hy - R * 0.34],
+      [R * 0.85, hy - R * 0.06], [-R * 0.85, hy]]);
+    fillInk(ctx, '#e11d48', 2.5);
+    // Trailing headband tail.
+    shape(ctx, [[-R * 0.8, hy - R * 0.2], [-R * 1.25, hy + R * 0.16],
+      [-R * 1.15, hy + R * 0.36], [-R * 0.78, hy + R * 0.02]]);
+    fillInk(ctx, '#e11d48', 2);
+  },
   nori(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
@@ -405,6 +422,17 @@ const WEAPON = {
   spike(ctx, d, R) {
     circlePath(ctx, R * 0.7, 0, R * 0.26);
     fillInk(ctx, d.hair, 2.5);
+  },
+  kenji(ctx, d, R) {
+    // Katana: long blade with a small guard.
+    shape(ctx, [[R * 0.2, -R * 0.06], [R * 1.85, -R * 0.22],
+      [R * 1.95, -R * 0.02], [R * 0.2, R * 0.12]]);
+    fillInk(ctx, '#e2e8f0', 2.5);
+    shape(ctx, [[R * 0.1, -R * 0.24], [R * 0.28, -R * 0.24],
+      [R * 0.28, R * 0.3], [R * 0.1, R * 0.3]]);
+    fillInk(ctx, '#facc15', 2);
+    shape(ctx, [[-R * 0.35, R * 0.04], [R * 0.12, R * 0.02]], false);
+    ink(ctx, 5);
   },
   nori(ctx, d, R) {
     shape(ctx, [[0, 0], [R * 1.7, -R * 0.5]], false);

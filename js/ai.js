@@ -34,6 +34,7 @@ function updateBot(bot, game, dt) {
   inp.fire = false;
   inp.super = false;
   inp.hyper = false;
+  inp.holding = false;
   inp.mx = 0;
   inp.my = 0;
 
@@ -98,11 +99,24 @@ function updateBot(bot, game, dt) {
 
   /* ---- combat ---- */
   const atkEmit = bot.def.attack.emit;
-  const brawlerish = atkEmit === 'melee' || atkEmit === 'dash';
+  const brawlerish = atkEmit === 'melee' || atkEmit === 'dash' || atkEmit === 'alternate';
   const engageDist = Math.max(range * 1.3, brawlerish ? 300 : 0);
   const lobber = atkEmit === 'lob' || bot.def.attack.ignoreWalls;
   const canShoot = target && ai.reaction <= 0 && targetDist < range * 0.92 &&
     (lobber || target.structure || GameMap.lineOfSight(bot.x, bot.y, target.x, target.y));
+
+  // Nori: hold to wind the hook when the target is out of swing range,
+  // otherwise just tap for the arc.
+  if (bot.def.trait === 'chargeHook') {
+    const swing = bot.def.attack.reach || 140;
+    if (target && targetDist > swing * 1.15 && targetDist < (bot.def.hook.range || 430)) {
+      inp.holding = bot.chargeUp < HOOK.maxCharge * 0.8;
+    } else if (target && targetDist <= swing * 1.15) {
+      inp.holding = bot.chargeUp < HOOK.tapTime * 0.5;
+    } else {
+      inp.holding = false;
+    }
+  }
 
   if (canShoot) {
     if (bot.hyperReady && bot.superReady) inp.hyper = true;

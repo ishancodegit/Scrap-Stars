@@ -71,6 +71,7 @@ class Brawler {
     this.chargeUp = 0;        // for charge-up attacks (Bea/Angelo style)
     this.beam = null;
     this.attackToken = 0;
+    this.attackIndex = 0;     // which half of an alternating attack is next
 
     this.input = { mx: 0, my: 0, aim: 0, aimDist: 0, fire: false, super: false, hyper: false, quick: false };
   }
@@ -152,6 +153,7 @@ class Brawler {
 
     this._updateReload(dt);
     this._updatePending(dt, game);
+    if (this.def.trait === 'chargeHook') this._updateCharge(dt, game);
 
     if (this.dash) this._updateDash(dt, game);
     else if (this.leap) this._updateLeap(dt, game);
@@ -161,6 +163,8 @@ class Brawler {
       if (this.input.hyper && this.hyperReady && this.superReady) this.activateHyper(game);
       if (this.input.super && this.superReady) this.useSuper(game);
       else if (this.input.quick && this.attackCd <= 0 && this.ammo > 0) this.quickAttack(game);
+      // A charge-hook brawler drives its own attack off hold/release instead.
+      else if (this.def.trait === 'chargeHook') { /* handled in _updateCharge */ }
       else if (this.input.fire && this.attackCd <= 0 && this.ammo > 0) {
         // Carrying the ball replaces the attack with a kick.
         if (game.mode.interceptFire && game.mode.interceptFire(game, this)) this.attackCd = 0.35;
@@ -309,7 +313,11 @@ class Brawler {
   }
 
   fire(game, extra) {
-    const a = this.def.attack;
+    let a = this.def.attack;
+    if (a.emit === 'alternate') {
+      a = a.parts[this.attackIndex % a.parts.length];
+      this.attackIndex++;
+    }
     this.ammo--;
     this.attackCd = a.cooldown || 0.35;
     this.revealTimer = ATTACK_REVEAL;
@@ -325,6 +333,42 @@ class Brawler {
    * with no aiming from the player at all. Same ammo, same cooldown — the only
    * thing it skips is having to point.
    */
+  /*
+   * Nori's rod. A tap swings it in a wide arc; holding winds up a hook that
+   * latches onto whoever — or whatever — it hits and reels him in. A full
+   * charge carries him clean over the wall he catches.
+   */
+  _updateCharge(dt, game) {
+    const holding = this.input.holding && !this.stunned && !this.dash && !this.leap;
+    if (holding) {
+      this.chargeUp = Math.min(this.chargeUp + dt, HOOK.maxCharge);
+      this._wasHolding = true;
+      return;
+    }
+    if (!this._wasHolding) return;
+    this._wasHolding = false;
+    const held = this.chargeUp;
+    this.chargeUp = 0;
+    if (this.attackCd > 0 || this.ammo <= 0) return;
+    if (held < HOOK.tapTime) this.fire(game);
+    else this.hookThrow(game, clamp(held / HOOK.maxCharge, 0, 1));
+  }
+
+  hookThrow(game, charge) {
+    const h = this.def.hook;
+    if (!h) return this.fire(game);
+    this.ammo--;
+    this.attackCd = h.cooldown || 0.5;
+    this.revealTimer = ATTACK_REVEAL;
+    const range = lerp(h.minRange || 200, h.range || 420, charge);
+    Abilities._spawnBullet(this, h, game, this.input.aim, range, { charge });
+    game.floatText(this.x, this.y - this.radius - 30,
+      charge >= 0.95 ? 'MAX' : '', '#38bdf8', 13);
+    Sfx.play('super_shot');
+  }
+
+  get chargePctHook() { return clamp(this.chargeUp / HOOK.maxCharge, 0, 1); }
+
   quickAttack(game) {
     const sol = AutoAim.solve(game, this, { spec: this.def.attack });
     if (sol) {
@@ -406,6 +450,8 @@ class Projectile {
     this.scale = spec.scale || null;   // damage ramp over distance
     this.isSuper = !!opt.isSuper;
     this.wave = !!spec.healAllies;
+    this.hookPull = !!spec.hookPull;
+    this.charge = opt.charge || 0;
   }
 
   get damage() {
@@ -462,6 +508,10 @@ class Projectile {
         if (GameMap.solid(tx, ty)) {
           if (this.spec.breakWalls && GameMap.breakTile(tx, ty)) {
             game.crateSmashed(tx, ty);
+          } else if (this.hookPull) {
+            // Caught a wall: reel in, and vault it on a full charge.
+            this._latch(game, this.x, this.y);
+            break;
           } else if (this.bounce > 0) {
             this._reflect(tx, ty);
           } else {
@@ -522,6 +572,7 @@ class Projectile {
         else Abilities.applyHit(b, this.spec, this.owner, game, this.angle, this.damage);
         game.burst(this.x, this.y, this.color, 6);
         if (this.spec.catchFish && this.owner.alive) this.owner.fish++;
+        if (this.hookPull) { this._latch(game, b.x, b.y); return true; }
         // Spike's cactus bursts on contact, not just at the end of its flight.
         if (this.spec.splitOnHit && this.spec.splitOnEnd) {
           this._expire(game);
@@ -563,6 +614,23 @@ class Projectile {
     this.range = this.chain.range;
     game.addLink(from.x, from.y, best.x, best.y, this.color);
     return true;
+  }
+
+  /* Reel the thrower toward whatever the hook caught. */
+  _latch(game, tx, ty) {
+    this.dead = true;
+    const o = this.owner;
+    if (!o || !o.alive) return;
+    const a = Math.atan2(ty - o.y, tx - o.x);
+    const d = Math.max(0, dist(o.x, o.y, tx, ty) - (o.radius + 16));
+    o.dash = {
+      angle: a, left: d, speed: HOOK.reelSpeed, damage: 0,
+      breakWalls: false, throughWalls: this.charge >= 0.95,
+      hits: new Set(), spec: {},
+    };
+    game.addLink(o.x, o.y, tx, ty, this.color);
+    game.burst(tx, ty, this.color, 8);
+    Sfx.play('quick');
   }
 
   _detonate(game) {

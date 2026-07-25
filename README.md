@@ -4,7 +4,7 @@ A 3v3 top-down arena brawler that runs in the browser. No build step, no
 dependencies, no image or audio files — every character, prop and sound is
 generated in code. Open `index.html` and play.
 
-**11 brawlers · 5 game modes · momentum-based movement.**
+**12 brawlers · 5 game modes · momentum-based movement.**
 
 ## Modes
 
@@ -75,7 +75,7 @@ for free.
 
 ## The brawlers
 
-Eleven, deliberately — each one is the only thing in the game that does what it
+Twelve, deliberately — each one is the only thing in the game that does what it
 does, and each has an attack, a Super and a Hypercharge.
 
 **Shelly** shotgun cone · **Colt** a line of six bullets · **Bull** point-blank
@@ -84,7 +84,19 @@ drop · **Rico** bullets that ricochet off walls · **Barley** bottles that pool
 into burning ground · **Poco** waves that pierce everyone and a chorus that
 heals · **Piper** damage that scales with how far the shot flew · **Mortis**
 attacks *by* dashing through you · **Spike** a cactus that bursts into spikes ·
-**Nori** a wide rod swing that banks a fish per hit to grow his Super.
+**Nori** tap to swing the rod, hold to wind up a hook · **Kenji** alternates a
+dash and a wide katana slash, healing off everything he lands.
+
+Two of them have a mechanic rather than just a weapon:
+
+- **Nori** — a tap swings the rod in a wide arc and banks a fish. *Holding*
+  winds up a hook that latches onto a brawler **or a wall** and reels him to
+  it; at full charge he goes clean over the wall he catches. Fish make his
+  Super bigger — each one adds radius and damage, up to six.
+- **Kenji** — his attack alternates. Odd swings **dash** through the enemy,
+  even swings cut a **wide arc**, and he heals for 35% of everything he lands.
+  His Super lobs a fish and brings an **X** down where it lands, with the
+  centre of the X taking double damage.
 
 A Hypercharge fills only once the Super is already up, then grants speed,
 damage and shield for six seconds *and* upgrades that brawler's Super.

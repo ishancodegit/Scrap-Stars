@@ -64,6 +64,7 @@ const Abilities = {
       speed: (spec.speed || 700) * rand(spec.speedJitter ? 0.95 : 1, spec.speedJitter ? 1.05 : 1),
       range: range || spec.range || 320,
       isSuper: ctx && ctx.isSuper,
+      charge: ctx && ctx.charge,
     }));
   },
 
@@ -350,6 +351,7 @@ const Abilities = {
     game.telegraphs.push({
       x, y, radius, damage, delay: spec.delay || 1, maxDelay: spec.delay || 1,
       owner, team: owner.team, color: spec.color || owner.def.color, spec,
+      centerMult: spec.centerMult || 1, shape: spec.shape || 'circle',
     });
   },
 

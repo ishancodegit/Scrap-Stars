@@ -183,16 +183,45 @@ const BRAWLERS = [
   {
     id: 'nori', name: 'Nori', cls: 'assassin', art: 'nori',
     color: '#38bdf8', skin: '#e8c9a5', hair: '#0f172a',
-    blurb: 'Swings the rod wide. Every hit lands a fish, and fish grow the Super.',
-    tip: 'Land attacks before you use the Super — six fish makes it enormous.',
+    blurb: 'Tap to swing the rod. Hold to wind up a hook that reels you in.',
+    tip: 'Hold the attack to charge. A full charge vaults you clean over a wall.',
     hp: 5600, speed: 236, radius: 17, ammo: 3, reload: 1.3, superCharge: 3000,
-    trait: 'fish',
+    trait: 'chargeHook',
+    /* Tap: a wide arc that banks a fish on every hit. */
     attack: { emit: 'melee', arc: 1.6, reach: 145, damage: 710, cooldown: 0.36, catchFish: true },
+    /* Hold and release: the hook. Latches onto a brawler or a wall and pulls
+     * Nori to it; at full charge he goes straight over the wall. */
+    hook: {
+      emit: 'projectiles', damage: 460, speed: 1250, range: 430, minRange: 190,
+      radius: 8, cooldown: 0.5, hookPull: true, catchFish: true, color: '#7dd3fc',
+    },
     super: {
       emit: 'delayedArea', range: 330, radius: 112, delay: 1.0, damage: 950,
       perFish: { radius: 15, damage: 190 }, maxFish: 6, color: '#38bdf8',
     },
     hyper: { name: 'Big Catch', charge: 4000, super: { delay: 0.8, damage: 1300, radius: 150 } },
+  },
+  {
+    id: 'kenji', name: 'Kenji', cls: 'assassin', art: 'kenji',
+    color: '#e11d48', skin: '#f0c9a4', hair: '#1f2937',
+    blurb: 'Alternates a dash and a wide slash, and heals off everything he hits.',
+    tip: 'Odd swings dash you in, even swings cut wide. Learn the rhythm.',
+    hp: 6300, speed: 236, radius: 18, ammo: 3, reload: 1.35, superCharge: 3100,
+    trait: 'lifesteal',
+    /* Every other swing is a dash through them, then a wide katana arc. */
+    attack: {
+      emit: 'alternate',
+      parts: [
+        { emit: 'dash', distance: 205, speed: 1020, damage: 600, cooldown: 0.4, range: 205 },
+        { emit: 'melee', arc: 1.9, reach: 136, damage: 960, cooldown: 0.4 },
+      ],
+    },
+    /* Slashimi: a fish goes up, and an X comes down where it lands. */
+    super: {
+      emit: 'delayedArea', range: 430, radius: 132, delay: 0.85, damage: 880,
+      centerMult: 2, shape: 'x', color: '#e11d48',
+    },
+    hyper: { name: 'Slashimi', charge: 4000, super: { radius: 172, damage: 1150, delay: 0.7 } },
   },
 ];
 
@@ -202,6 +231,7 @@ for (const b of BRAWLERS) BRAWLER_BY_ID[b.id] = b;
 /* Longest reach of a kit, whatever shape it takes — used by the bots. */
 function specRange(spec) {
   if (!spec) return 0;
+  if (spec.emit === 'alternate') return Math.max(...spec.parts.map(specRange));
   if (spec.emit === 'melee') return spec.reach || 90;
   if (spec.emit === 'dash') return spec.distance || spec.range || 200;
   if (spec.emit === 'leap') return spec.range || 300;

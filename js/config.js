@@ -39,6 +39,13 @@ const HYPER = {
 
 const STATUS_TICK = 0.25;
 
+/* Nori's rod: tap to swing, hold to wind up the hook. */
+const HOOK = {
+  tapTime: 0.18,      // shorter than this and it is just a swing
+  maxCharge: 0.75,
+  reelSpeed: 1150,
+};
+
 /* Warm desert arena. */
 const PALETTE = {
   bg: '#5d3626',

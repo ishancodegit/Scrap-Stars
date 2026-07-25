@@ -522,6 +522,25 @@ const Renderer = {
   _drawTelegraphs(ctx, game) {
     for (const t of game.telegraphs) {
       const p = 1 - clamp(t.delay / t.maxDelay, 0, 1);
+      if (t.shape === 'x') {
+        ctx.save();
+        ctx.translate(t.x, t.y);
+        ctx.rotate(Math.PI / 4);
+        ctx.globalAlpha = 0.2 + p * 0.55;
+        ctx.fillStyle = t.color;
+        const arm = t.radius * (0.35 + p * 0.65);
+        const w = t.radius * 0.26;
+        ctx.fillRect(-arm, -w / 2, arm * 2, w);
+        ctx.fillRect(-w / 2, -arm, w, arm * 2);
+        ctx.globalAlpha = 0.35 + p * 0.5;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-arm, -w / 2, arm * 2, w);
+        ctx.strokeRect(-w / 2, -arm, w, arm * 2);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        continue;
+      }
       ctx.globalAlpha = 0.25 + p * 0.35;
       ctx.strokeStyle = t.color;
       ctx.lineWidth = 3;

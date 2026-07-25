@@ -90,7 +90,7 @@ const UI = {
         <div class="cblurb">${b.blurb}</div>
         <div class="cstats">
           <span><i style="background:#34d399"></i>${b.hp}</span>
-          <span><i style="background:#f97316"></i>${b.attack.damage || 0}${b.attack.count > 1 ? '×' + b.attack.count : ''}</span>
+          <span><i style="background:#f97316"></i>${dmgLabel(b.attack)}</span>
           <span><i style="background:#60a5fa"></i>${Math.round(specRange(b.attack))}</span>
         </div>
         <div class="ctip">${b.tip}</div>`;
@@ -163,6 +163,15 @@ const UI = {
       `<tr><th>Player</th><th>Brawler</th><th>K</th><th>D</th></tr>${rows}`;
   },
 };
+
+/* Damage readout for a kit, whatever shape its attack takes. */
+function dmgLabel(a) {
+  if (!a) return '—';
+  if (a.emit === 'alternate') return a.parts.map((x) => x.damage || 0).join(' / ');
+  if (a.emit === 'beam') return `${a.dps}/s`;
+  const n = a.count > 1 ? `×${a.count}` : '';
+  return `${a.damage || 0}${n}`;
+}
 
 function on(id, fn) {
   const el = document.getElementById(id);

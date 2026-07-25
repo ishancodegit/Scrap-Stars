@@ -205,6 +205,8 @@ const Game = {
     inp.super = Input.consumeSuper();
     inp.hyper = Input.consumeHyper();
     inp.quick = Input.consumeQuick();
+    // Charge-hook brawlers need to know the button is being held, not just fired.
+    inp.holding = Input.usingTouch ? !!Input.aimStick : Input.firing;
 
     // Aim assist only nudges a shot that was already close to a target; it
     // never takes the aim away from where the player is actually pointing.
@@ -273,7 +275,12 @@ const Game = {
       t.delay -= dt;
       if (t.delay > 0) continue;
       t.done = true;
-      this.explode(t.x, t.y, t.radius, t.damage * (t.owner.damageMult || 1), t.owner, t.color, t.spec);
+      const dmg = t.damage * (t.owner.damageMult || 1);
+      this.explode(t.x, t.y, t.radius, dmg, t.owner, t.color, t.spec);
+      // The centre of Kenji's X hits twice as hard as the arms.
+      if (t.centerMult > 1) {
+        this.explode(t.x, t.y, t.radius * 0.34, dmg * (t.centerMult - 1), t.owner, t.color, t.spec);
+      }
       this.shake(9);
     }
     this.telegraphs = this.telegraphs.filter((t) => !t.done);
@@ -367,6 +374,11 @@ const Game = {
       source.addCharge(dealt);
     }
     if (target.def.trait === 'chargeFromDamage') target.addCharge(dealt * 0.9);
+    // Kenji drinks a share of everything he lands.
+    if (source && source !== target && source.def && source.def.trait === 'lifesteal' &&
+        source.team !== target.team && source.alive) {
+      this.healTarget(source, dealt * 0.35, source);
+    }
     if (!silent) Sfx.play('hit');
 
     if (target === this.player || (source && source === this.player)) {
