@@ -29,7 +29,7 @@ function botCanSee(bot, other) {
 
 function updateBot(bot, game, dt) {
   const ai = bot.ai;
-  const cfg = DIFFICULTY[game.difficulty] || DIFFICULTY.normal;
+  const cfg = game.botProfile || DIFFICULTY[game.difficulty] || DIFFICULTY.normal;
   const inp = bot.input;
   inp.fire = false;
   inp.super = false;

@@ -365,3 +365,18 @@ const MODES = {
 };
 
 const MODE_LIST = [MODES.gem, MODES.brawlball, MODES.bounty, MODES.heist, MODES.knockout];
+
+/*
+ * Ranked is not a rule set of its own — it is any of the above played for
+ * rating, against bots pitched at your tier. The picker shows it as a card;
+ * starting a ranked match rolls one of the real modes.
+ */
+const RANKED_CARD = {
+  id: 'ranked',
+  name: 'Ranked',
+  tag: '3v3 · rated',
+  icon: 'rank',
+  blurb: 'A random mode, played for trophies. The bots match your tier — Bronze barely aims, Master does not miss.',
+};
+
+const PICKER_MODES = [RANKED_CARD].concat(MODE_LIST);

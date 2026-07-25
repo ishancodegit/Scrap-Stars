@@ -637,13 +637,26 @@ const Renderer = {
   _drawEffects(ctx, game) {
     for (const s of game.swings) {
       const p = clamp(s.life / s.maxLife, 0, 1);
-      ctx.globalAlpha = p * 0.5;
-      ctx.fillStyle = s.color;
       ctx.beginPath();
       ctx.moveTo(s.x, s.y);
-      ctx.arc(s.x, s.y, s.reach * (1.15 - p * 0.15), s.angle - s.arc / 2, s.angle + s.arc / 2);
-      ctx.closePath();
-      ctx.fill();
+      if (s.telegraph) {
+        // Wind-up: a growing outline showing where the hit will land.
+        ctx.arc(s.x, s.y, s.reach * (1 - p), s.angle - s.arc / 2, s.angle + s.arc / 2);
+        ctx.closePath();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.globalAlpha = 0.14;
+        ctx.fillStyle = s.color;
+        ctx.fill();
+      } else {
+        ctx.arc(s.x, s.y, s.reach * (1.15 - p * 0.15), s.angle - s.arc / 2, s.angle + s.arc / 2);
+        ctx.closePath();
+        ctx.globalAlpha = p * 0.5;
+        ctx.fillStyle = s.color;
+        ctx.fill();
+      }
       ctx.globalAlpha = 1;
     }
 
@@ -697,6 +710,7 @@ const Renderer = {
     const w = this.w, h = this.h;
     ctx.textBaseline = 'middle';
 
+    this._drawTeamStrips(ctx, game, w);
     this._drawScoreboard(ctx, game, w);
     if (!Input.usingTouch) this._drawPlayerPanel(ctx, game, w, h);
     this._drawFeed(ctx, game, w);
@@ -714,6 +728,62 @@ const Renderer = {
     }
 
     if (Input.usingTouch) this._drawTouchControls(ctx, w, h, game);
+  },
+
+  /*
+   * Your team down the left, theirs down the right, the way the real thing
+   * lays it out: a portrait chip per brawler with a health bar, dimmed while
+   * they are down and counting back in.
+   */
+  _drawTeamStrips(ctx, game, w) {
+    const compact = w < 900 || Input.usingTouch;
+    const cw = compact ? 92 : 116;
+    const ch = compact ? 26 : 30;
+    const gap = 5;
+    for (const team of [0, 1]) {
+      const mates = game.brawlers.filter((b) => b.team === team);
+      const right = team !== game.playerTeam;
+      mates.forEach((b, i) => {
+        const x = right ? w - 12 - cw : 12;
+        const y = 12 + i * (ch + gap);
+        ctx.fillStyle = 'rgba(20,12,34,.78)';
+        this._roundRect(ctx, x, y, cw, ch, 8);
+        ctx.fill();
+        ctx.strokeStyle = b === game.player ? '#ffc738' : 'rgba(255,255,255,.12)';
+        ctx.lineWidth = b === game.player ? 2 : 1;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.globalAlpha = b.alive ? 1 : 0.4;
+        // Colour chip standing in for the portrait.
+        ctx.fillStyle = b.def.color;
+        this._roundRect(ctx, x + 4, y + 4, ch - 8, ch - 8, 5);
+        ctx.fill();
+
+        const bx = x + ch, bw = cw - ch - 8;
+        ctx.fillStyle = 'rgba(0,0,0,.5)';
+        this._roundRect(ctx, bx, y + ch / 2 - 4, bw, 8, 4);
+        ctx.fill();
+        ctx.fillStyle = TEAM_COLOR[team];
+        this._roundRect(ctx, bx, y + ch / 2 - 4, bw * clamp(b.hp / b.maxHp, 0, 1), 8, 4);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${compact ? 9 : 10}px system-ui, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(b.def.name, bx, y + ch / 2 - 7);
+
+        if (!b.alive) {
+          ctx.fillStyle = '#fca5a5';
+          ctx.font = `bold ${compact ? 11 : 12}px system-ui, sans-serif`;
+          ctx.textAlign = 'right';
+          ctx.fillText(Math.ceil(Math.max(0, b.respawnTimer)), x + cw - 6, y + ch / 2 + 4);
+        }
+        ctx.restore();
+      });
+    }
+    ctx.textBaseline = 'middle';
   },
 
   _drawScoreboard(ctx, game, w) {
@@ -742,7 +812,24 @@ const Renderer = {
 
     ctx.fillStyle = 'rgba(255,255,255,.55)';
     ctx.font = `bold ${compact ? 9 : 10}px system-ui, sans-serif`;
-    ctx.fillText(game.mode.name.toUpperCase(), cx, compact ? 22 : 24);
+    ctx.fillText(game.mode.name.toUpperCase(), cx, compact ? 20 : 22);
+    if (game.mapDef) {
+      // Sits clear of the panel's lower edge, outlined so it reads on sand.
+      const my = 10 + panelH + 14;
+      ctx.font = `bold ${compact ? 9 : 10}px system-ui, sans-serif`;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(20,12,34,.8)';
+      ctx.strokeText(game.mapDef.name.toUpperCase(), cx, my);
+      ctx.fillStyle = '#43d17a';
+      ctx.fillText(game.mapDef.name.toUpperCase(), cx, my);
+    }
+    if (game.ranked) {
+      ctx.fillStyle = '#ffc738';
+      ctx.font = `bold ${compact ? 8 : 9}px system-ui, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillText('RANKED', cx - panelW / 2 + 8, compact ? 20 : 22);
+      ctx.textAlign = 'center';
+    }
 
     const mins = Math.floor(game.timeLeft / 60);
     const secs = Math.floor(game.timeLeft % 60);

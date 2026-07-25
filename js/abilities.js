@@ -153,6 +153,22 @@ const Abilities = {
   },
 
   _melee(owner, spec, game, ctx) {
+    // A wind-up telegraphs the swing: the arc is shown now, the hit lands later.
+    if (spec.windup && !ctx.wound) {
+      owner.pending.push({
+        t: spec.windup,
+        spec: { ...spec, windup: 0 },
+        ctx: { ...ctx, wound: true },
+      });
+      owner.pending.sort((a, b) => a.t - b.t);
+      game.swings.push({
+        x: owner.x, y: owner.y, angle: ctx.angle,
+        arc: spec.arc || 0.9, reach: spec.reach || 90,
+        life: spec.windup, maxLife: spec.windup,
+        color: '#ffffff', telegraph: true,
+      });
+      return false;
+    }
     const hits = spec.hits || 1;
     if (hits > 1 && !ctx.chained) {
       for (let i = 1; i < hits; i++) {
@@ -169,6 +185,8 @@ const Abilities = {
       if (d > reach + b.radius) continue;
       const a = Math.atan2(b.y - owner.y, b.x - owner.x);
       if (Math.abs(angDiff(a, ctx.angle)) > arc / 2) continue;
+      // A swing does not pass through a wall — you have to come round it.
+      if (!spec.throughWalls && !GameMap.lineOfSight(owner.x, owner.y, b.x, b.y)) continue;
       this.applyHit(b, spec, owner, game, ctx.angle);
       landed = true;
       if (spec.catchFish) owner.fish++;

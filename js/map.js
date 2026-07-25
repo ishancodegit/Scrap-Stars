@@ -48,14 +48,15 @@ const GameMap = {
     return false;
   },
 
-  generate() {
+  generate(style) {
+    this.style = MAP_STYLES[style] ? style : 'balanced';
     for (let attempt = 0; attempt < 40; attempt++) {
-      this._layout();
+      this._layout(MAP_STYLES[this.style]);
       if (this._connected()) return;
     }
   },
 
-  _layout() {
+  _layout(cfg) {
     this.grid.fill(T_EMPTY);
 
     // Solid border wall.
@@ -265,3 +266,48 @@ function moveAndCollide(body, dx, dy) {
   body.x = clamp(body.x, r, WORLD_W - r);
   body.y = clamp(body.y, r, WORLD_H - r);
 }
+
+
+/*
+ * Arena flavours. Each named map below picks one of these, so Brawl Ball gets
+ * open pitches you can actually run the ball down, and Heist gets dense cover
+ * to sneak through.
+ */
+const MAP_STYLES = {
+  open:     { cover: 13, bush: 10, crateRatio: 0.45, lanes: 0 },
+  balanced: { cover: 22, bush: 15, crateRatio: 0.42, lanes: 0 },
+  maze:     { cover: 34, bush: 12, crateRatio: 0.34, lanes: 0 },
+  bushy:    { cover: 17, bush: 30, crateRatio: 0.5, lanes: 0 },
+  lanes:    { cover: 12, bush: 12, crateRatio: 0.4, lanes: 6 },
+};
+
+/* Named maps, so a mode is somewhere rather than just something. */
+const MAPS = {
+  gem: [
+    { name: 'Hard Rock Mine', style: 'balanced' },
+    { name: 'Crystal Arcade', style: 'open' },
+    { name: 'Undermine', style: 'maze' },
+  ],
+  brawlball: [
+    { name: 'Backyard Bowl', style: 'open' },
+    { name: 'Pinhole Punt', style: 'lanes' },
+    { name: 'Sneaky Fields', style: 'bushy' },
+  ],
+  bounty: [
+    { name: 'Snake Prairie', style: 'bushy' },
+    { name: 'Shooting Star', style: 'open' },
+    { name: 'Canal Grande', style: 'lanes' },
+  ],
+  heist: [
+    { name: 'Safe Zone', style: 'balanced' },
+    { name: 'Hot Potato', style: 'maze' },
+    { name: 'Kaboom Canyon', style: 'lanes' },
+  ],
+  knockout: [
+    { name: 'Goldarm Gulch', style: 'balanced' },
+    { name: 'Belle\'s Rock', style: 'open' },
+    { name: 'Flaring Phoenix', style: 'maze' },
+  ],
+};
+
+function mapsFor(modeId) { return MAPS[modeId] || MAPS.gem; }

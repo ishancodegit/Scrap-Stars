@@ -223,6 +223,22 @@ const BRAWLERS = [
     },
     hyper: { name: 'Slashimi', charge: 4000, super: { radius: 172, damage: 1150, delay: 0.7 } },
   },
+  {
+    id: 'frank', name: 'Frank', cls: 'tank', art: 'frank',
+    color: '#84cc16', skin: '#9fb47a', hair: '#3f2a1a',
+    blurb: 'Winds up, then flattens a whole arc with the hammer.',
+    tip: 'The swing lands a beat after you start it — swing where they will be.',
+    hp: 9400, speed: 212, radius: 21, ammo: 1, reload: 1.85, superCharge: 4200,
+    attack: {
+      emit: 'melee', arc: 1.3, reach: 190, damage: 1180, cooldown: 0.95, windup: 0.5,
+      breakWalls: true,
+    },
+    super: {
+      emit: 'melee', arc: 1.75, reach: 230, damage: 900, stun: 1.9, cooldown: 0.5,
+      windup: 0.35, breakWalls: true,
+    },
+    hyper: { name: 'Shockwave', charge: 5000, super: { reach: 285, damage: 1250, stun: 2.5 } },
+  },
 ];
 
 const BRAWLER_BY_ID = {};

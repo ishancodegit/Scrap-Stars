@@ -329,6 +329,21 @@ const ART = {
       fillInk(ctx, '#fb7185', 1.5);
     }
   },
+  frank(ctx, d, R) {
+    Sprites._head(ctx, d, R);
+    const hy = -R * 0.72;
+    // Flat-top hair and the bolts.
+    shape(ctx, [[-R * 0.78, hy - R * 0.24], [-R * 0.72, hy - R * 0.78],
+      [R * 0.72, hy - R * 0.78], [R * 0.78, hy - R * 0.24]]);
+    fillInk(ctx, d.hair, 2.5);
+    for (const sx of [-1, 1]) {
+      circlePath(ctx, sx * R * 0.86, hy + R * 0.06, R * 0.16);
+      fillInk(ctx, '#94a3b8', 2);
+    }
+    // Stitches.
+    shape(ctx, [[-R * 0.3, hy + R * 0.4], [R * 0.34, hy + R * 0.4]], false);
+    ink(ctx, 2);
+  },
   kenji(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
@@ -422,6 +437,18 @@ const WEAPON = {
   spike(ctx, d, R) {
     circlePath(ctx, R * 0.7, 0, R * 0.26);
     fillInk(ctx, d.hair, 2.5);
+  },
+  frank(ctx, d, R) {
+    // Big two-handed hammer.
+    shape(ctx, [[0, R * 0.04], [R * 1.3, -R * 0.16]], false);
+    ink(ctx, 6);
+    shape(ctx, [[R * 1.15, -R * 0.62], [R * 1.85, -R * 0.74],
+      [R * 1.95, R * 0.2], [R * 1.25, R * 0.3]]);
+    fillInk(ctx, '#78716c', 3);
+    shape(ctx, [[R * 1.22, -R * 0.5], [R * 1.8, -R * 0.6]], false);
+    ctx.strokeStyle = 'rgba(255,255,255,.3)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
   },
   kenji(ctx, d, R) {
     // Katana: long blade with a small guard.

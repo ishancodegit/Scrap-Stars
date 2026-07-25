@@ -3,10 +3,13 @@
 const UI = {
   brawler: BRAWLERS[0].id,
   mode: 'gem',
+  map: null,
 
   init() {
+    Ranked.load();
     this._buildBrawlers();
     this._buildModes();
+    this._rollMap();
     this._refreshHome();
 
     on('play', () => this.startMatch());
@@ -17,17 +20,16 @@ const UI = {
     on('modes-back', () => this.show('home'));
     on('result-home', () => { Game.state = 'menu'; this.show('home'); });
 
+    on('mode-card', () => this.show('modes'));
+
     const aa = document.getElementById('autoaim');
-    const paintAA = () => {
-      aa.classList.toggle('on', Input.autoAim);
-      aa.innerHTML = `Auto-aim: <b>${Input.autoAim ? 'On' : 'Off'}</b>`;
-    };
+    const paintAA = () => aa.classList.toggle('on', Input.autoAim);
     aa.addEventListener('click', () => { Input.autoAim = !Input.autoAim; paintAA(); });
     paintAA();
 
-    for (const el of document.querySelectorAll('.diff')) {
+    for (const el of document.querySelectorAll('.diff-rail')) {
       el.addEventListener('click', () => {
-        for (const d of document.querySelectorAll('.diff')) d.classList.remove('active');
+        for (const d of document.querySelectorAll('.diff-rail')) d.classList.remove('active');
         el.classList.add('active');
         Game.difficulty = el.dataset.diff;
       });
@@ -42,9 +44,7 @@ const UI = {
       }
       if (k === 't') {
         Input.autoAim = !Input.autoAim;
-        const el = document.getElementById('autoaim');
-        el.classList.toggle('on', Input.autoAim);
-        el.innerHTML = `Auto-aim: <b>${Input.autoAim ? 'On' : 'Off'}</b>`;
+        document.getElementById('autoaim').classList.toggle('on', Input.autoAim);
       }
       if ((k === 'p' || k === 'escape') && Game.state === 'playing') {
         Game.paused = !Game.paused;
@@ -62,16 +62,53 @@ const UI = {
 
   /* ---------------- home ---------------- */
 
+  /* Ranked rolls its underlying mode at kick-off, so show it as such. */
+  _modeCard() {
+    return this.mode === 'ranked' ? RANKED_CARD : MODES[this.mode];
+  },
+
+  _rollMap() {
+    const id = this.mode === 'ranked' ? pick(MODE_LIST).id : this.mode;
+    this.rolled = id;
+    this.map = pick(mapsFor(id));
+  },
+
   _refreshHome() {
     const def = BRAWLER_BY_ID[this.brawler];
-    const mode = MODES[this.mode];
-    paintPortrait(document.getElementById('home-portrait'), def, 1.15);
+    const card = this._modeCard();
+
+    paintPortrait(document.getElementById('home-portrait'), def, 1.5);
+    paintPortrait(document.getElementById('rail-portrait'), def, 0.85);
     document.getElementById('home-brawler-name').textContent = def.name;
-    document.getElementById('home-brawler-class').textContent = CLASSES[def.cls];
-    document.getElementById('home-brawler-class').style.color = def.color;
-    document.getElementById('home-mode-name').textContent = mode.name;
-    document.getElementById('home-mode-blurb').textContent = mode.blurb;
-    paintModeIcon(document.getElementById('home-mode-icon'), mode);
+    const cls = document.getElementById('home-brawler-class');
+    cls.textContent = CLASSES[def.cls];
+    cls.style.color = def.color;
+
+    document.getElementById('home-mode-name').textContent = card.name;
+    document.getElementById('mode-tag').textContent = card.tag;
+    document.getElementById('home-map-name').textContent =
+      this.mode === 'ranked' ? `${MODES[this.rolled].name} · ${this.map.name}` : this.map.name;
+    paintModeIcon(document.getElementById('home-mode-icon'), card);
+    paintModeIcon(document.getElementById('rail-mode'), card);
+
+    // Rank plate.
+    const tier = Ranked.tier();
+    const badge = document.getElementById('rank-badge');
+    const bctx = badge.getContext('2d');
+    bctx.clearRect(0, 0, badge.width, badge.height);
+    bctx.save();
+    bctx.translate(badge.width / 2, badge.height / 2);
+    drawRankBadge(bctx, 46, tier);
+    bctx.restore();
+    document.getElementById('rank-name').textContent = tier.name;
+    document.getElementById('rank-name').style.color = tier.glow;
+    document.getElementById('rank-fill').style.width = `${Math.round(Ranked.progress() * 100)}%`;
+    const next = Ranked.nextAt();
+    document.getElementById('rank-elo').textContent =
+      next == null ? `${Ranked.elo} trophies` : `${Ranked.elo} / ${next} trophies`;
+    document.getElementById('stat-record').textContent =
+      `${Ranked.won}W · ${Math.max(0, Ranked.played - Ranked.won)}L`;
+    document.getElementById('stat-best').textContent = `Best ${Ranked.best}`;
   },
 
   /* ---------------- pickers ---------------- */
@@ -109,18 +146,21 @@ const UI = {
   _buildModes() {
     const list = document.getElementById('mode-list');
     list.innerHTML = '';
-    for (const m of MODE_LIST) {
+    for (const m of PICKER_MODES) {
       const card = document.createElement('button');
-      card.className = 'card mode' + (m.id === this.mode ? ' active' : '');
+      card.className = 'card mode' + (m.id === 'ranked' ? ' ranked' : '') + (m.id === this.mode ? ' active' : '');
       card.dataset.id = m.id;
+      const maps = m.id === 'ranked' ? null : mapsFor(m.id).map((x) => x.name).join(' · ');
       card.innerHTML = `
         <canvas class="modeicon" width="96" height="96"></canvas>
         <div class="mbody">
           <div class="cname">${m.name} <em>${m.tag}</em></div>
           <div class="cblurb">${m.blurb}</div>
+          ${maps ? `<div class="cmaps">${maps}</div>` : ''}
         </div>`;
       card.addEventListener('click', () => {
         this.mode = m.id;
+        this._rollMap();
         for (const el of list.children) el.classList.toggle('active', el.dataset.id === m.id);
         Sfx.resume();
         Sfx.play('tick');
@@ -135,7 +175,11 @@ const UI = {
     for (const id of ['home', 'brawlers', 'modes', 'result', 'paused']) {
       document.getElementById(id).classList.add('hidden');
     }
-    Game.start(this.brawler, this.mode, Game.difficulty);
+    this._rollMap();
+    Game.start(this.brawler, this.rolled, Game.difficulty, {
+      ranked: this.mode === 'ranked',
+      map: this.map,
+    });
   },
 
   showResult(winner) {
@@ -147,7 +191,30 @@ const UI = {
 
     const s = Game.mode.score ? Game.mode.score(Game) : ['0', '0'];
     document.getElementById('result-sub').textContent =
-      `${Game.mode.name} · ${s[Game.playerTeam]} — ${s[1 - Game.playerTeam]}`;
+      `${Game.mode.name} · ${Game.mapDef ? Game.mapDef.name + ' · ' : ''}` +
+      `${s[Game.playerTeam]} — ${s[1 - Game.playerTeam]}`;
+
+    // Ranked settlement.
+    const box = document.getElementById('rank-result');
+    box.classList.toggle('hidden', !Game.rankResult);
+    if (Game.rankResult) {
+      const r = Game.rankResult;
+      const d = document.getElementById('result-delta');
+      d.textContent = `${r.delta >= 0 ? '+' : ''}${r.delta}`;
+      d.className = 'delta' + (r.delta < 0 ? ' down' : '');
+      document.getElementById('result-tier').textContent =
+        r.promoted ? `Promoted to ${r.tier.name}!`
+          : r.demoted ? `Dropped to ${r.tier.name}`
+            : `${r.tier.name} · ${Ranked.elo} trophies`;
+      document.getElementById('result-fill').style.width = `${Math.round(Ranked.progress() * 100)}%`;
+      const rb = document.getElementById('result-badge');
+      const rc = rb.getContext('2d');
+      rc.clearRect(0, 0, rb.width, rb.height);
+      rc.save();
+      rc.translate(rb.width / 2, rb.height / 2);
+      drawRankBadge(rc, 44, r.tier);
+      rc.restore();
+    }
 
     const rows = Game.brawlers
       .slice()
@@ -248,6 +315,10 @@ function paintModeIcon(canvas, mode) {
       ctx.arc(0, 0, 13, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      break;
+    }
+    case 'rank': {
+      drawRankBadge(ctx, 34, Ranked.tier());
       break;
     }
     case 'skull': {

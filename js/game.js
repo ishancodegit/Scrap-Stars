@@ -23,6 +23,10 @@ const Game = {
   texts: [],
   feed: [],
 
+  ranked: false,
+  mapDef: null,
+  botProfile: null,
+  rankResult: null,
   teamScore: [0, 0],
   safes: [],
   goals: [],
@@ -40,9 +44,14 @@ const Game = {
   tickParity: 0,
   _last: 0,
 
-  start(brawlerId, modeId, difficulty) {
+  start(brawlerId, modeId, difficulty, opts) {
+    const o = opts || {};
     this.difficulty = difficulty || 'normal';
+    this.ranked = !!o.ranked;
     this.mode = MODES[modeId] || MODES.gem;
+    this.mapDef = o.map || pick(mapsFor(this.mode.id));
+    // Ranked opposition is set by your own tier, not by a difficulty button.
+    this.botProfile = this.ranked ? Ranked.botProfile() : (DIFFICULTY[this.difficulty] || DIFFICULTY.normal);
     for (const key of ['brawlers', 'projectiles', 'lobs', 'beams', 'summons', 'gems',
       'areas', 'telegraphs', 'tempWalls', 'swings', 'links', 'particles', 'pulses',
       'texts', 'feed', 'safes', 'goals']) {
@@ -61,7 +70,7 @@ const Game = {
     this.result = null;
     this.tickParity = 0;
 
-    GameMap.generate();
+    GameMap.generate(this.mapDef.style);
 
     const names = BOT_NAMES.slice();
     for (let i = names.length - 1; i > 0; i--) {
@@ -500,6 +509,9 @@ const Game = {
     if (this.state !== 'playing') return;
     this.state = 'over';
     this.result = winner;
+    this.rankResult = this.ranked
+      ? Ranked.settle(winner === this.playerTeam, winner === -1)
+      : null;
     Sfx.play(winner === this.playerTeam ? 'win' : 'lose');
     UI.showResult(winner);
   },

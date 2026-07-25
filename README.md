@@ -4,7 +4,27 @@ A 3v3 top-down arena brawler that runs in the browser. No build step, no
 dependencies, no image or audio files — every character, prop and sound is
 generated in code. Open `index.html` and play.
 
-**12 brawlers · 5 game modes · momentum-based movement.**
+**13 brawlers · 5 modes · a ranked ladder from Bronze to Master.**
+
+## Ranked
+
+Pick **Ranked** and the game rolls one of the five modes on one of its maps and
+puts trophies on it. Your rating decides your tier, and your tier decides the
+opposition:
+
+| Tier | From | Bots |
+|---|---|---|
+| Bronze | 0 | barely lead their shots, rarely use a Super |
+| Silver | 200 | |
+| Gold | 400 | |
+| Diamond | 600 | |
+| Mythic | 800 | |
+| Legendary | 1000 | |
+| Master | 1200 | near-perfect aim, instant reactions, never waste a Super |
+
+Bronze bots spray about 17° off target and take 0.6s to react; Master bots are
+within 1.5° and react in 0.06s. Wins move you 34 trophies at Bronze and 16 at
+Master, losses cost 80% of a win, and the ladder persists in local storage.
 
 ## Modes
 
@@ -15,6 +35,10 @@ generated in code. Open `index.html` and play.
 | **Bounty** | 2:00 | Every kill is worth a star, and stars stack on whoever is winning. |
 | **Heist** | 2:30 | Crack the enemy safe before they crack yours. |
 | **Knockout** | 2:00 | No respawns. Wipe the other team twice. |
+
+Each mode has three named maps with their own layout style — open pitches for
+Brawl Ball, dense cover for Heist, lanes for Bounty — rolled per match and
+shown on the home screen and in the battle HUD.
 
 ## Controls
 

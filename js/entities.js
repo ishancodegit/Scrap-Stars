@@ -193,7 +193,14 @@ class Brawler {
     for (const shot of this.pending) shot.t -= dt;
     while (this.pending.length && this.pending[0].t <= 0) {
       const shot = this.pending.shift();
-      Abilities.fireOne(this, shot.spec, game, shot.ctx);
+      // Only bullet streams go through fireOne. Queued melee (a punch combo,
+      // a wind-up swing) has to go back through the emitter, or it silently
+      // turns into invisible projectiles with melee stats.
+      if (shot.spec.emit && shot.spec.emit !== 'projectiles') {
+        Abilities.emit(this, shot.spec, game, shot.ctx);
+      } else {
+        Abilities.fireOne(this, shot.spec, game, shot.ctx);
+      }
     }
   }
 

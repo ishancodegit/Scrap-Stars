@@ -4,11 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Scrap Stars — 3v3 Arena Brawler</title>
-<meta name="description" content="Scrap Stars — a fast 3v3 top-down arena brawler in the browser. Eleven brawlers, five game modes, no downloads." />
+<meta name="description" content="Scrap Stars — a 3v3 top-down arena brawler in the browser. Thirteen brawlers, six modes, ranked play from Bronze to Master." />
 <meta property="og:title" content="Scrap Stars — 3v3 Arena Brawler" />
-<meta property="og:description" content="A browser 3v3 brawler: five modes, eleven brawlers, momentum-based movement." />
+<meta property="og:description" content="A browser 3v3 brawler: ranked ladder, six modes, thirteen brawlers, momentum movement." />
 <meta property="og:type" content="website" />
-<meta name="theme-color" content="#1b1210" />
+<meta name="theme-color" content="#2a1b52" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💥</text></svg>" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -17,44 +17,71 @@
 <canvas id="game"></canvas>
 
 <!-- Home -->
-<div id="home" class="overlay">
-  <div class="home">
-    <h1 class="logo"><span>SCRAP</span><em>STARS</em></h1>
+<div id="home" class="overlay home-screen">
 
-    <div class="home-cards">
-      <button id="pick-brawler" class="bigcard">
-        <span class="tagline">Brawler</span>
-        <canvas id="home-portrait" class="portrait big" width="190" height="190"></canvas>
-        <div id="home-brawler-name" class="bigname">Shelly</div>
-        <div id="home-brawler-class" class="bigsub">Damage Dealer</div>
-        <span class="change">Change ›</span>
-      </button>
-
-      <button id="pick-mode" class="bigcard">
-        <span class="tagline">Mode</span>
-        <canvas id="home-mode-icon" class="modeicon big" width="150" height="150"></canvas>
-        <div id="home-mode-name" class="bigname">Gem Grab</div>
-        <div id="home-mode-blurb" class="bigsub small"></div>
-        <span class="change">Change ›</span>
-      </button>
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="plate rankplate">
+      <canvas id="rank-badge" width="120" height="120"></canvas>
+      <div class="plate-body">
+        <div id="rank-name" class="plate-title">Bronze</div>
+        <div class="bar"><span id="rank-fill"></span></div>
+        <div id="rank-elo" class="plate-sub">0 trophies</div>
+      </div>
     </div>
 
-    <button id="play" class="play">PLAY</button>
-
-    <div class="homefoot">
-      <div class="diffs">
-        <button class="diff" data-diff="easy">Easy</button>
-        <button class="diff active" data-diff="normal">Normal</button>
-        <button class="diff" data-diff="hard">Hard</button>
-      </div>
-      <p class="keys">
-        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move ·
-        <kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot ·
-        <kbd>E</kbd> quick attack · <kbd>Space</kbd> Super · <kbd>Q</kbd> Hypercharge
-      </p>
-      <button id="autoaim" class="toggle on">Auto-aim: <b>On</b></button>
+    <div class="topright">
+      <div class="pill"><i class="dot win"></i><span id="stat-record">0W · 0L</span></div>
+      <div class="pill"><i class="dot best"></i><span id="stat-best">Best 0</span></div>
     </div>
   </div>
+
+  <!-- left rail -->
+  <nav class="rail left">
+    <button id="pick-brawler" class="railbtn">
+      <canvas id="rail-portrait" width="120" height="120"></canvas>
+      <span class="raillabel">BRAWLERS</span>
+    </button>
+    <button id="pick-mode" class="railbtn">
+      <canvas id="rail-mode" width="120" height="120"></canvas>
+      <span class="raillabel">MODES</span>
+    </button>
+  </nav>
+
+  <!-- centre stage -->
+  <div class="stage">
+    <h1 class="logo"><span>SCRAP</span><em>STARS</em></h1>
+    <canvas id="home-portrait" class="hero" width="360" height="360"></canvas>
+    <div id="home-brawler-name" class="heroname">Shelly</div>
+    <div id="home-brawler-class" class="heroclass">Damage Dealer</div>
+  </div>
+
+  <!-- right rail -->
+  <nav class="rail right">
+    <button class="railbtn diff-rail" data-diff="easy"><span class="raillabel">EASY</span></button>
+    <button class="railbtn diff-rail active" data-diff="normal"><span class="raillabel">NORMAL</span></button>
+    <button class="railbtn diff-rail" data-diff="hard"><span class="raillabel">HARD</span></button>
+    <button id="autoaim" class="railbtn on"><span class="raillabel">AUTO-AIM</span></button>
+  </nav>
+
+  <!-- bottom bar -->
+  <div class="bottombar">
+    <button id="mode-card" class="modecard">
+      <canvas id="home-mode-icon" width="110" height="110"></canvas>
+      <div class="modebody">
+        <div id="home-mode-name" class="modename">Gem Grab</div>
+        <div id="home-map-name" class="mapname">Hard Rock Mine</div>
+      </div>
+      <span id="mode-tag" class="modetag">3v3</span>
+    </button>
+    <button id="play" class="play">PLAY</button>
+  </div>
+
+  <p class="keys">
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Mouse</kbd> aim ·
+    <kbd>Click</kbd> shoot · <kbd>E</kbd> quick · <kbd>Space</kbd> Super ·
+    <kbd>Q</kbd> Hyper · <kbd>T</kbd> auto-aim
+  </p>
 </div>
 
 <!-- Brawler picker -->
@@ -84,9 +111,17 @@
   <div class="sheet narrow">
     <h2 id="result-title">Victory</h2>
     <p id="result-sub" class="sub"></p>
+    <div id="rank-result" class="rankresult hidden">
+      <canvas id="result-badge" width="110" height="110"></canvas>
+      <div>
+        <div id="result-delta" class="delta">+0</div>
+        <div id="result-tier" class="plate-sub">Bronze</div>
+        <div class="bar wide"><span id="result-fill"></span></div>
+      </div>
+    </div>
     <table id="scoreboard"></table>
     <div class="row buttons">
-      <button id="again" class="play">PLAY AGAIN</button>
+      <button id="again" class="play small">PLAY AGAIN</button>
       <button id="result-home" class="ghost">HOME</button>
     </div>
   </div>
@@ -113,6 +148,7 @@
 <script src="js/config.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/map.js"></script>
+<script src="js/ranks.js"></script>
 <script src="js/roster.js"></script>
 <script src="js/aim.js"></script>
 <script src="js/sprites.js"></script>
