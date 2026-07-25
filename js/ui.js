@@ -256,34 +256,9 @@ const UI = {
       rc.restore();
     }
 
-    // Starr Drops earned this match, opened one tap at a time.
-    const dropBox = document.getElementById('drop-result');
-    const openBtn = document.getElementById('drop-open');
-    const paintDrop = (reward) => {
-      const cv = document.getElementById('drop-canvas');
-      const c = cv.getContext('2d');
-      c.clearRect(0, 0, cv.width, cv.height);
-      c.save();
-      c.translate(cv.width / 2, cv.height / 2);
-      drawStarrDrop(c, 52, reward ? reward.rarity.color : '#8b7bbd', !!reward);
-      c.restore();
-      document.getElementById('drop-rarity').textContent =
-        reward ? reward.rarity.name : `${Progress.drops} Starr Drop${Progress.drops === 1 ? '' : 's'}`;
-      document.getElementById('drop-rarity').style.color = reward ? reward.rarity.color : 'var(--muted)';
-      document.getElementById('drop-text').textContent = reward ? reward.text : 'Tap to open';
-      openBtn.textContent = Progress.drops > 0 ? `Open (${Progress.drops})` : 'All opened';
-      openBtn.disabled = Progress.drops <= 0;
-    };
-    dropBox.classList.toggle('hidden', Progress.drops <= 0);
-    if (Progress.drops > 0) paintDrop(null);
-    openBtn.onclick = () => {
-      const reward = Progress.openDrop(this.brawler);
-      if (!reward) return;
-      Sfx.resume();
-      Sfx.play('win');
-      paintDrop(reward);
-      this._paintAllPower();
-    };
+    // Starr Drops earned this match. The button only announces them — the
+    // opening itself takes over the whole screen.
+    this._paintDropButton();
 
     const rows = Game.brawlers
       .slice()
@@ -297,6 +272,31 @@ const UI = {
         </tr>`).join('');
     document.getElementById('scoreboard').innerHTML =
       `<tr><th>Player</th><th>Brawler</th><th>K</th><th>D</th></tr>${rows}`;
+  },
+
+  /* The bait on the result screen: how many drops are waiting, and a lid. */
+  _paintDropButton() {
+    const btn = document.getElementById('drop-open');
+    const n = Progress.drops;
+    btn.classList.toggle('hidden', n <= 0);
+    if (n <= 0) return;
+    document.getElementById('drop-count').textContent =
+      `OPEN ${n} STARR DROP${n === 1 ? '' : 'S'}`;
+    const cv = document.getElementById('drop-canvas');
+    const c = cv.getContext('2d');
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.save();
+    c.translate(cv.width / 2, cv.height / 2);
+    drawStarrDrop(c, 44, '#c084fc', false);
+    c.restore();
+    btn.onclick = () => {
+      Sfx.resume();
+      StarrDrop.begin(Progress.drops, this.brawler, () => {
+        this._paintDropButton();
+        this._paintAllPower();
+        this._refreshHome();
+      });
+    };
   },
 };
 
@@ -421,6 +421,7 @@ window.addEventListener('load', () => {
   const canvas = document.getElementById('game');
   Renderer.init(canvas);
   Input.init(canvas);
+  StarrDrop.init();
   UI.init();
   Game._last = performance.now();
   requestAnimationFrame((t) => Game.frame(t));

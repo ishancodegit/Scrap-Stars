@@ -133,34 +133,59 @@ const Progress = {
   },
 };
 
-/* Draw a Starr Drop: a rounded capsule with a star on it. */
+/* Draw a Starr Drop: a rounded capsule with a seam and a star on the front. */
 function drawStarrDrop(ctx, r, color, open) {
   ctx.save();
   ctx.lineJoin = 'round';
-  const g = ctx.createLinearGradient(0, -r, 0, r);
-  g.addColorStop(0, color);
-  g.addColorStop(1, 'rgba(0,0,0,.35)');
+
   ctx.beginPath();
-  ctx.moveTo(-r * 0.72, -r * 0.2);
-  ctx.quadraticCurveTo(0, -r * 1.15, r * 0.72, -r * 0.2);
-  ctx.quadraticCurveTo(r * 0.95, r * 0.75, 0, r * 0.95);
-  ctx.quadraticCurveTo(-r * 0.95, r * 0.75, -r * 0.72, -r * 0.2);
+  ctx.moveTo(0, -r);
+  ctx.bezierCurveTo(r * 0.62, -r, r * 0.92, -r * 0.42, r * 0.92, r * 0.05);
+  ctx.bezierCurveTo(r * 0.92, r * 0.64, r * 0.55, r * 0.96, 0, r * 0.96);
+  ctx.bezierCurveTo(-r * 0.55, r * 0.96, -r * 0.92, r * 0.64, -r * 0.92, r * 0.05);
+  ctx.bezierCurveTo(-r * 0.92, -r * 0.42, -r * 0.62, -r, 0, -r);
   ctx.closePath();
+
+  const g = ctx.createLinearGradient(0, -r, 0, r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.22, color);
+  g.addColorStop(1, 'rgba(0,0,0,.5)');
   ctx.fillStyle = g;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(20,12,34,.8)';
-  ctx.lineWidth = Math.max(2, r * 0.11);
+  ctx.strokeStyle = 'rgba(18,7,31,.9)';
+  ctx.lineWidth = Math.max(2, r * 0.1);
   ctx.stroke();
 
+  // Seam where the lid meets the base.
+  ctx.save();
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(18,7,31,.55)';
+  ctx.lineWidth = Math.max(1.5, r * 0.06);
+  ctx.beginPath();
+  ctx.moveTo(-r, -r * 0.28);
+  ctx.quadraticCurveTo(0, -r * 0.12, r, -r * 0.28);
+  ctx.stroke();
+  // Gloss down the upper left.
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.34, -r * 0.52, r * 0.24, r * 0.13, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Star.
   ctx.beginPath();
   for (let i = 0; i < 10; i++) {
     const a = -Math.PI / 2 + (i / 10) * Math.PI * 2;
-    const rr = i % 2 ? r * 0.2 : r * 0.46;
-    const px = Math.cos(a) * rr, py = Math.sin(a) * rr + r * 0.06;
+    const rr = i % 2 ? r * 0.21 : r * 0.5;
+    const px = Math.cos(a) * rr, py = Math.sin(a) * rr + r * 0.14;
     i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
   }
   ctx.closePath();
-  ctx.fillStyle = open ? '#fff' : 'rgba(255,255,255,.75)';
+  ctx.fillStyle = open ? '#fff' : '#f6ecff';
   ctx.fill();
+  ctx.strokeStyle = 'rgba(18,7,31,.7)';
+  ctx.lineWidth = Math.max(1.5, r * 0.055);
+  ctx.stroke();
   ctx.restore();
 }

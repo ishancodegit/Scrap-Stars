@@ -112,14 +112,10 @@
   <div class="sheet narrow">
     <h2 id="result-title">Victory</h2>
     <p id="result-sub" class="sub"></p>
-    <div id="drop-result" class="dropbox hidden">
-      <canvas id="drop-canvas" width="150" height="150"></canvas>
-      <div class="dropbody">
-        <div id="drop-rarity" class="droprarity">Rare</div>
-        <div id="drop-text" class="droptext">40 coins</div>
-        <button id="drop-open" class="ghost small">Open Starr Drop</button>
-      </div>
-    </div>
+    <button id="drop-open" class="dropbtn hidden">
+      <canvas id="drop-canvas" width="120" height="120"></canvas>
+      <span id="drop-count">OPEN 1 STARR DROP</span>
+    </button>
 
     <div id="rank-result" class="rankresult hidden">
       <canvas id="result-badge" width="110" height="110"></canvas>
@@ -153,6 +149,12 @@
   </div>
 </div>
 
+<!-- Starr Drop opening -->
+<div id="starrdrop" class="dropstage hidden">
+  <canvas id="drop-stage"></canvas>
+  <div id="drop-prompt" class="dropprompt"></div>
+</div>
+
 <div id="muted" class="corner-note">Sound: on (M)</div>
 
 <script src="js/config.js"></script>
@@ -160,6 +162,7 @@
 <script src="js/map.js"></script>
 <script src="js/ranks.js"></script>
 <script src="js/progress.js"></script>
+<script src="js/starrdrop.js"></script>
 <script src="js/roster.js"></script>
 <script src="js/aim.js"></script>
 <script src="js/sprites.js"></script>
