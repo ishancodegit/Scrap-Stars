@@ -7,6 +7,9 @@ const Input = {
   firing: false,
   superQueued: false,
   hyperQueued: false,
+  quickQueued: false,
+  quickFlash: 0,
+  autoAim: true,
   usingTouch: false,
 
   // touch sticks: { id, ox, oy, x, y }
@@ -27,6 +30,7 @@ const Input = {
       this.keys.add(e.key.toLowerCase());
       if (e.key === ' ') this.superQueued = true;
       if (e.key.toLowerCase() === 'q') this.hyperQueued = true;
+      if (e.key.toLowerCase() === 'e') this.quickQueued = true;
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => { this.keys.clear(); this.firing = false; });
@@ -41,6 +45,7 @@ const Input = {
       if (e.button === 0) this.firing = true;
       if (e.button === 1) this.hyperQueued = true;
       if (e.button === 2) this.superQueued = true;
+      if (e.button === 1) this.quickQueued = true;
     });
     window.addEventListener('mouseup', (e) => {
       if (e.button === 0) this.firing = false;
@@ -69,6 +74,7 @@ const Input = {
       aim: { x: w - pad - r * 4.2, y: h - pad - r * 0.9, r },
       superBtn: { x: w - pad - r * 0.9, y: h - pad - r * 0.9, r: r * 0.72 },
       hyperBtn: { x: w - pad - r * 2.25, y: h - pad - r * 1.25, r: r * 0.5 },
+      quickBtn: { x: w - pad - r * 1.05, y: h - pad - r * 2.5, r: r * 0.47 },
     };
   },
 
@@ -94,6 +100,11 @@ const Input = {
       if (this._hit(L.hyperBtn, x, y)) {
         this.hyperQueued = true;
         this.hyperFlash = 0.3;
+        continue;
+      }
+      if (this._hit(L.quickBtn, x, y)) {
+        this.quickQueued = true;
+        this.quickFlash = 0.3;
         continue;
       }
 
@@ -157,6 +168,12 @@ const Input = {
   consumeSuper() {
     const q = this.superQueued;
     this.superQueued = false;
+    return q;
+  },
+
+  consumeQuick() {
+    const q = this.quickQueued;
+    this.quickQueued = false;
     return q;
   },
 

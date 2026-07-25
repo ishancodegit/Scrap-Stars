@@ -39,6 +39,8 @@ class Brawler {
     this.kills = 0;
     this.deaths = 0;
     this.stars = 0;          // Bounty
+    this.lockFlash = 0;      // brief marker over an auto-aim target
+    this.lockTarget = null;
 
     /* Hypercharge: fills only once the Super is already available. */
     this.hyperCharge = 0;
@@ -70,7 +72,7 @@ class Brawler {
     this.beam = null;
     this.attackToken = 0;
 
-    this.input = { mx: 0, my: 0, aim: 0, aimDist: 0, fire: false, super: false, hyper: false };
+    this.input = { mx: 0, my: 0, aim: 0, aimDist: 0, fire: false, super: false, hyper: false, quick: false };
   }
 
   get superReady() { return this.charge >= this.def.superCharge; }
@@ -129,6 +131,7 @@ class Brawler {
     this.revealTimer = Math.max(0, this.revealTimer - dt);
     this.spawnGuard = Math.max(0, this.spawnGuard - dt);
     this.attackCd = Math.max(0, this.attackCd - dt);
+    this.lockFlash = Math.max(0, this.lockFlash - dt);
     this.slowUntil = Math.max(0, this.slowUntil - dt);
     this.stunUntil = Math.max(0, this.stunUntil - dt);
     this.invisUntil = Math.max(0, this.invisUntil - dt);
@@ -157,6 +160,7 @@ class Brawler {
     if (!this.stunned && !this.dash && !this.leap) {
       if (this.input.hyper && this.hyperReady && this.superReady) this.activateHyper(game);
       if (this.input.super && this.superReady) this.useSuper(game);
+      else if (this.input.quick && this.attackCd <= 0 && this.ammo > 0) this.quickAttack(game);
       else if (this.input.fire && this.attackCd <= 0 && this.ammo > 0) {
         // Carrying the ball replaces the attack with a kick.
         if (game.mode.interceptFire && game.mode.interceptFire(game, this)) this.attackCd = 0.35;
@@ -304,16 +308,34 @@ class Brawler {
     }
   }
 
-  fire(game) {
+  fire(game, extra) {
     const a = this.def.attack;
     this.ammo--;
     this.attackCd = a.cooldown || 0.35;
     this.revealTimer = ATTACK_REVEAL;
-    Abilities.emit(this, a, game, {
+    Abilities.emit(this, a, game, Object.assign({
       angle: this.input.aim,
       aimDist: this.input.aimDist || a.range,
-    });
+    }, extra));
     Sfx.play('shot');
+  }
+
+  /*
+   * Quick attack: fire the normal attack straight at whatever auto-aim picks,
+   * with no aiming from the player at all. Same ammo, same cooldown — the only
+   * thing it skips is having to point.
+   */
+  quickAttack(game) {
+    const sol = AutoAim.solve(game, this, { spec: this.def.attack });
+    if (sol) {
+      this.input.aim = sol.angle;
+      this.input.aimDist = sol.dist;
+      this.lockFlash = 0.35;
+      this.lockTarget = sol.target;
+    }
+    // autoTrack re-solves the aim for each shot of a burst, so a stream
+    // weapon keeps tracking a crossing target instead of trailing behind it.
+    this.fire(game, { autoTrack: !!sol });
   }
 
   useSuper(game) {

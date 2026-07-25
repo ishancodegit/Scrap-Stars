@@ -22,16 +22,39 @@ generated in code. Open `index.html` and play.
 |---|---|
 | `W` `A` `S` `D` | move |
 | Mouse | aim · click to shoot |
+| `E` / middle-click | **quick attack** — fires at the best target, no aiming |
 | `Space` / right-click | Super |
-| `Q` / middle-click | Hypercharge |
+| `Q` | Hypercharge |
+| `T` | toggle aim assist |
 | `P` pause · `M` mute | |
 
 ### On a phone
 
 Landscape, twin-stick. Left thumb moves, right thumb aims — **drag to aim,
-release to fire**, and a bare tap auto-aims at the nearest target. The Super is
-the gold-ringed disc in the corner (the ring is its charge), Hypercharge sits
-beside it. Ammo shows under your own nameplate. Portrait gets a rotate prompt.
+release to fire**. A bare tap, or the **QUICK** button, fires at whatever
+auto-aim picks. The Super is the gold-ringed disc in the corner (the ring is
+its charge), Hypercharge and Quick sit beside it. Ammo shows under your own
+nameplate. Portrait gets a rotate prompt.
+
+## Auto-aim
+
+One target picker feeds everything that needs one — the quick attack, the
+mobile tap, and the aim assist on manual shots. It scores candidates by how
+close they are to dying, then by distance, biased toward whatever you're
+already facing, so the lock is predictable and tends to finish kills rather
+than spread damage.
+
+- **Quick attack** (`E`) fires your normal attack straight at that target. Same
+  ammo, same cooldown — the only thing it skips is having to point.
+- **Aim assist** only nudges a shot that was already within ~18° of a target.
+  Point somewhere else and your aim is left completely alone. Toggle with `T`
+  or on the home screen.
+- Shots are **led** by the projectile's flight time, and burst weapons
+  **re-track between shots**. Against a target crossing at 180 px/s, Colt's
+  six-bullet stream lands 6/6 with lead and re-tracking, 3/6 with lead alone,
+  and 0/6 without.
+- A brawler hiding in a bush is never a valid lock unless you're on top of
+  them, so auto-aim can't be used as a bush detector.
 
 ## Movement
 

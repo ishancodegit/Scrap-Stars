@@ -45,7 +45,12 @@ const Abilities = {
   /* One projectile from a queued stream. */
   fireOne(owner, spec, game, ctx) {
     if (!owner.alive) return;
-    this._spawnBullet(owner, spec, game, ctx.angle, ctx.range || spec.range, ctx);
+    let angle = ctx.angle;
+    if (ctx.autoTrack) {
+      const sol = AutoAim.solve(game, owner, { spec });
+      if (sol) angle = sol.angle;
+    }
+    this._spawnBullet(owner, spec, game, angle, ctx.range || spec.range, ctx);
     if (spec.sound !== false) Sfx.play(ctx.isSuper ? 'super_shot' : 'shot');
   },
 
@@ -73,7 +78,10 @@ const Abilities = {
         owner.pending.push({
           t: i * interval,
           spec,
-          ctx: { angle: ctx.angle + rand(-(spec.jitter || 0), spec.jitter || 0), range: spec.range, isSuper: ctx.isSuper },
+          ctx: {
+            angle: ctx.angle + rand(-(spec.jitter || 0), spec.jitter || 0),
+            range: spec.range, isSuper: ctx.isSuper, autoTrack: ctx.autoTrack,
+          },
         });
       }
       owner.pending.sort((a, b) => a.t - b.t);

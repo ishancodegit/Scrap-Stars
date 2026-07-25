@@ -71,6 +71,7 @@ const Renderer = {
     this.shakeT = Math.max(0, this.shakeT - dt);
     Input.superFlash = Math.max(0, Input.superFlash - dt);
     Input.hyperFlash = Math.max(0, Input.hyperFlash - dt);
+    Input.quickFlash = Math.max(0, Input.quickFlash - dt);
     if (this.shakeT <= 0) this.shakeMag = 0;
     const sx = this.shakeMag ? rand(-this.shakeMag, this.shakeMag) : 0;
     const sy = this.shakeMag ? rand(-this.shakeMag, this.shakeMag) : 0;
@@ -93,6 +94,7 @@ const Renderer = {
     this._drawWalls(ctx);
     this._drawBushes(ctx, game);
     this._drawPlates(ctx, game);
+    this._drawLock(ctx, game);
     this._drawEffects(ctx, game);
     if (Input.usingTouch) this._drawAimIndicator(ctx, game);
 
@@ -496,6 +498,27 @@ const Renderer = {
     }
   },
 
+  /* Reticle over the target auto-aim just locked, so the assist is visible. */
+  _drawLock(ctx, game) {
+    const p = game.player;
+    if (!p || !p.alive || p.lockFlash <= 0 || !p.lockTarget) return;
+    const t = p.lockTarget;
+    if (t.alive === false || t.dead) return;
+    const a = clamp(p.lockFlash / 0.3, 0, 1);
+    const r = (t.radius || 18) + 10 + (1 - a) * 6;
+    ctx.save();
+    ctx.globalAlpha = a * 0.9;
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 4; i++) {
+      const base = i * (Math.PI / 2) + Math.PI / 4;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, r, base - 0.32, base + 0.32);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+
   _drawTelegraphs(ctx, game) {
     for (const t of game.telegraphs) {
       const p = 1 - clamp(t.delay / t.maxDelay, 0, 1);
@@ -856,6 +879,16 @@ const Renderer = {
       flash: Input.superFlash,
     });
 
+    this._actionButton(ctx, L.quickBtn, {
+      progress: p ? 1 - clamp(p.attackCd / (p.def.attack.cooldown || 0.35), 0, 1) : 1,
+      ready: !!p && p.ammo > 0 && p.attackCd <= 0,
+      ring: '#38bdf8',
+      glyph: 'crosshair',
+      label: 'QUICK',
+      flash: Input.quickFlash,
+      small: true,
+    });
+
     if (p && p.def.hyper) {
       this._actionButton(ctx, L.hyperBtn, {
         progress: p.hyperActive > 0 ? p.hyperActive / HYPER.duration : p.hyperPct,
@@ -936,6 +969,26 @@ const Renderer = {
     ctx.fillStyle = o.ready ? '#fff' : '#cbd5e1';
     const gs = r * 0.5;
     ctx.beginPath();
+    if (o.glyph === 'crosshair') {
+      ctx.lineWidth = Math.max(2, gs * 0.22);
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.arc(x, y, gs * 0.62, 0, Math.PI * 2);
+      ctx.moveTo(x - gs, y); ctx.lineTo(x - gs * 0.3, y);
+      ctx.moveTo(x + gs * 0.3, y); ctx.lineTo(x + gs, y);
+      ctx.moveTo(x, y - gs); ctx.lineTo(x, y - gs * 0.3);
+      ctx.moveTo(x, y + gs * 0.3); ctx.lineTo(x, y + gs);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      ctx.save();
+      ctx.fillStyle = o.ready ? o.ring : 'rgba(255,255,255,.35)';
+      ctx.font = `bold ${Math.round(r * 0.26)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(o.label, x, y + r + r * 0.3);
+      ctx.restore();
+      return;
+    }
     if (o.glyph === 'bolt') {
       ctx.moveTo(x + gs * 0.25, y - gs);
       ctx.lineTo(x - gs * 0.55, y + gs * 0.15);

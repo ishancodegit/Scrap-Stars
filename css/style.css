@@ -322,3 +322,18 @@ tr.enemy td:first-child { color: #fb7185; }
   .row.buttons { flex-direction: column; }
   .row.buttons .play, .row.buttons .ghost { width: 100%; }
 }
+
+.toggle {
+  padding: 8px 18px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.toggle b { color: var(--muted); }
+.toggle.on { border-color: var(--sky); color: var(--text); }
+.toggle.on b { color: var(--sky); }

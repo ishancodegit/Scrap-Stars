@@ -182,10 +182,12 @@ const Game = {
           inp.aimDist = 80 + Input.releaseAim.len * (reach - 80);
         } else {
           // Bare tap: point at the closest enemy we can actually see.
-          const foe = this._nearestVisibleEnemy(p, reach * 1.6);
-          if (foe) {
-            inp.aim = Math.atan2(foe.y - p.y, foe.x - p.x);
-            inp.aimDist = dist(p.x, p.y, foe.x, foe.y);
+          const sol = AutoAim.solve(this, p, { spec: p.def.attack });
+          if (sol) {
+            inp.aim = sol.angle;
+            inp.aimDist = sol.dist;
+            p.lockTarget = sol.target;
+            p.lockFlash = 0.25;
           }
         }
         Input.releaseAim = null;
@@ -202,6 +204,19 @@ const Game = {
 
     inp.super = Input.consumeSuper();
     inp.hyper = Input.consumeHyper();
+    inp.quick = Input.consumeQuick();
+
+    // Aim assist only nudges a shot that was already close to a target; it
+    // never takes the aim away from where the player is actually pointing.
+    if (Input.autoAim && inp.fire && !inp.quick && p.attackCd <= 0 && p.ammo > 0) {
+      const sol = AutoAim.assist(this, p, inp.aim, p.def.attack);
+      if (sol) {
+        inp.aim = sol.angle;
+        inp.aimDist = sol.dist;
+        p.lockTarget = sol.target;
+        p.lockFlash = 0.25;
+      }
+    }
   },
 
   _nearestVisibleEnemy(from, maxDist) {

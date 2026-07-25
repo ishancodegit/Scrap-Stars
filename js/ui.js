@@ -17,6 +17,14 @@ const UI = {
     on('modes-back', () => this.show('home'));
     on('result-home', () => { Game.state = 'menu'; this.show('home'); });
 
+    const aa = document.getElementById('autoaim');
+    const paintAA = () => {
+      aa.classList.toggle('on', Input.autoAim);
+      aa.innerHTML = `Auto-aim: <b>${Input.autoAim ? 'On' : 'Off'}</b>`;
+    };
+    aa.addEventListener('click', () => { Input.autoAim = !Input.autoAim; paintAA(); });
+    paintAA();
+
     for (const el of document.querySelectorAll('.diff')) {
       el.addEventListener('click', () => {
         for (const d of document.querySelectorAll('.diff')) d.classList.remove('active');
@@ -31,6 +39,12 @@ const UI = {
       if (k === 'm') {
         const muted = Sfx.toggle();
         document.getElementById('muted').textContent = muted ? 'Sound: off (M)' : 'Sound: on (M)';
+      }
+      if (k === 't') {
+        Input.autoAim = !Input.autoAim;
+        const el = document.getElementById('autoaim');
+        el.classList.toggle('on', Input.autoAim);
+        el.innerHTML = `Auto-aim: <b>${Input.autoAim ? 'On' : 'Off'}</b>`;
       }
       if ((k === 'p' || k === 'escape') && Game.state === 'playing') {
         Game.paused = !Game.paused;
