@@ -115,6 +115,42 @@ html, body {
 .pill .dot { width: 9px; height: 9px; border-radius: 50%; }
 .dot.win { background: var(--green); }
 .dot.best { background: var(--gold); }
+.dot.coin { background: linear-gradient(180deg, #ffe08a, #e0a11a); }
+
+/* power level chip + upgrade button on a brawler card */
+.plevel {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px; font-size: 11px; font-weight: 900;
+}
+.plevel .pnum {
+  background: linear-gradient(180deg, #ffe08a, var(--gold));
+  color: #5a3100; border-radius: 6px; padding: 1px 7px;
+}
+.pbar { flex: 1; height: 6px; border-radius: 99px; background: rgba(0,0,0,.45); overflow: hidden; }
+.pbar span { display: block; height: 100%; background: linear-gradient(90deg, #7dd3fc, #38bdf8); }
+.upbtn {
+  margin-top: 7px; width: 100%; padding: 6px 8px;
+  font: inherit; font-size: 11px; font-weight: 900;
+  color: #5a3100; background: linear-gradient(180deg, #ffe08a, var(--gold));
+  border: none; border-bottom: 3px solid var(--gold-lip); border-radius: 9px;
+  cursor: pointer;
+}
+.upbtn[disabled] {
+  background: rgba(255,255,255,.08); color: var(--muted);
+  border-bottom-color: rgba(0,0,0,.3); cursor: default;
+}
+
+/* Starr Drop reveal on the result screen */
+.dropbox {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  margin-top: 16px; padding: 12px;
+  background: rgba(0,0,0,.28); border-radius: 14px;
+}
+.dropbox canvas { width: 86px; height: 86px; }
+.dropbody { display: grid; justify-items: start; gap: 4px; }
+.droprarity { font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.droptext { font-size: 17px; font-weight: 900; }
+.ghost.small { padding: 7px 14px; font-size: 12px; }
 
 /* rails ----------------------------------------------------------- */
 

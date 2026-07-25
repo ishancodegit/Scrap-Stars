@@ -9,6 +9,20 @@
 
 let _entityId = 1;
 
+/*
+ * Bots are levelled to match the fight rather than to be a wall: in ranked
+ * their level tracks the tier so a Master lobby is a Master lobby, and in
+ * casual they mirror whatever the player brought.
+ */
+function opts_power(def, isBot) {
+  if (typeof Game === 'undefined' || !isBot) return 1;
+  if (Game.ranked && typeof Ranked !== 'undefined') {
+    const i = RANKS.findIndex((r) => r.id === Ranked.tier().id);
+    return clamp(3 + Math.round(i * 1.35), 1, MAX_POWER);
+  }
+  return Game.player ? Game.player.power : 1;
+}
+
 class Brawler {
   constructor(def, team, isBot, name) {
     this.id = _entityId++;
@@ -17,8 +31,13 @@ class Brawler {
     this.isBot = isBot;
     this.name = name;
     this.radius = def.radius || 17;
-    this.maxHp = def.hp;
-    this.hp = def.hp;
+    // Power level scales health and damage together.
+    this.power = (typeof Progress !== 'undefined' && !isBot)
+      ? Progress.level(def.id)
+      : (opts_power(def, isBot));
+    this.powerMult = powerMult(this.power);
+    this.maxHp = Math.round(def.hp * this.powerMult);
+    this.hp = this.maxHp;
     this.baseSpeed = def.speed;
     this.x = 0;
     this.y = 0;
@@ -96,7 +115,9 @@ class Brawler {
     return s;
   }
 
-  get damageMult() { return this.hyperActive > 0 ? HYPER.damageMult : 1; }
+  get damageMult() {
+    return (this.hyperActive > 0 ? HYPER.damageMult : 1) * this.powerMult;
+  }
   get incomingMult() { return this.hyperActive > 0 ? HYPER.shieldMult : 1; }
 
   spawnAt(x, y) {

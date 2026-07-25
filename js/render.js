@@ -9,8 +9,6 @@ const Renderer = {
   camX: WORLD_W / 2,
   camY: WORLD_H / 2,
   scale: 1,
-  shakeMag: 0,
-  shakeT: 0,
 
   init(canvas) {
     this.canvas = canvas;
@@ -30,10 +28,13 @@ const Renderer = {
     this.scale = clamp(Math.min(this.w / 900, this.h / 540), 0.5, 1.45);
   },
 
-  shake(mag) {
-    this.shakeMag = Math.max(this.shakeMag, mag);
-    this.shakeT = 0.25;
-  },
+  /*
+   * Screen shake is deliberately gone. In a top-down game where you are
+   * tracking small fast targets, jolting the camera on every explosion costs
+   * you the shot you were lining up. Hit feedback lives in the flash, the
+   * particles and the damage numbers instead.
+   */
+  shake() {},
 
   worldToScreen(x, y) {
     return {
@@ -68,16 +69,12 @@ const Renderer = {
     ctx.fillStyle = PALETTE.bg;
     ctx.fillRect(0, 0, this.w, this.h);
 
-    this.shakeT = Math.max(0, this.shakeT - dt);
     Input.superFlash = Math.max(0, Input.superFlash - dt);
     Input.hyperFlash = Math.max(0, Input.hyperFlash - dt);
     Input.quickFlash = Math.max(0, Input.quickFlash - dt);
-    if (this.shakeT <= 0) this.shakeMag = 0;
-    const sx = this.shakeMag ? rand(-this.shakeMag, this.shakeMag) : 0;
-    const sy = this.shakeMag ? rand(-this.shakeMag, this.shakeMag) : 0;
 
     ctx.save();
-    ctx.translate(this.w / 2 + sx, this.h / 2 + sy);
+    ctx.translate(this.w / 2, this.h / 2);
     ctx.scale(this.scale, this.scale);
     ctx.translate(-this.camX, -this.camY);
 

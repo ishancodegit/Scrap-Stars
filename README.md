@@ -4,7 +4,23 @@ A 3v3 top-down arena brawler that runs in the browser. No build step, no
 dependencies, no image or audio files — every character, prop and sound is
 generated in code. Open `index.html` and play.
 
-**13 brawlers · 5 modes · a ranked ladder from Bronze to Master.**
+**13 brawlers · 5 modes · a ranked ladder from Bronze to Master · power levels and Starr Drops.**
+
+## Progression
+
+Every brawler has a **power level from 1 to 11**. Each level adds a flat 4% to
+health and damage, so level 11 is exactly **40% above level 1** — a real edge,
+not a different game. Levels cost power points earned by that brawler plus
+coins from the shared pool.
+
+**Starr Drops** are the payout at the end of a match: always one for a win, a
+coin flip for a loss. Each rolls a rarity — Rare 50%, Super Rare 28%, Epic 14%,
+Mythic 6%, Legendary 2% — and pays out coins, power points, or at Mythic and
+above a level outright. Open them on the result screen.
+
+Bots are levelled to match the fight rather than to be a wall: in casual they
+mirror whatever you brought, and in ranked their level tracks the tier, from 3
+at Bronze to 11 at Master.
 
 ## Ranked
 
@@ -125,6 +141,13 @@ Two of them have a mechanic rather than just a weapon:
 A Hypercharge fills only once the Super is already up, then grants speed,
 damage and shield for six seconds *and* upgrades that brawler's Super.
 
+## No screen shake
+
+There deliberately isn't any. In a top-down game where you are tracking small
+fast targets, jolting the camera on every explosion costs you the shot you were
+lining up. Hit feedback lives in the flash, the particles and the damage
+numbers instead.
+
 ## Art
 
 Everything is drawn with canvas paths — one house style of chunky silhouettes,
@@ -147,7 +170,9 @@ index.html        markup, home screen and menus
 css/style.css     styling
 js/config.js      tuning constants, movement values, palette, helpers
 js/map.js         arena generation, collision, line of sight, flow fields
-js/roster.js      the eleven brawlers, as data
+js/ranks.js       ranked tiers, Elo, and the bot skill each tier implies
+js/progress.js    power levels, upgrade costs, Starr Drops
+js/roster.js      the thirteen brawlers, as data
 js/sprites.js     all character and prop art
 js/abilities.js   the ability engine — turns kit data into things happening
 js/entities.js    brawlers, projectiles, lobs, beams, summons, gems

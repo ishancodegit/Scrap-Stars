@@ -7,6 +7,7 @@ const UI = {
 
   init() {
     Ranked.load();
+    Progress.load();
     this._buildBrawlers();
     this._buildModes();
     this._rollMap();
@@ -109,6 +110,7 @@ const UI = {
     document.getElementById('stat-record').textContent =
       `${Ranked.won}W · ${Math.max(0, Ranked.played - Ranked.won)}L`;
     document.getElementById('stat-best').textContent = `Best ${Ranked.best}`;
+    document.getElementById('stat-coins').textContent = Progress.coins;
   },
 
   /* ---------------- pickers ---------------- */
@@ -126,20 +128,58 @@ const UI = {
         <div class="ccls" style="color:${b.color}">${CLASSES[b.cls]}</div>
         <div class="cblurb">${b.blurb}</div>
         <div class="cstats">
-          <span><i style="background:#34d399"></i>${b.hp}</span>
-          <span><i style="background:#f97316"></i>${dmgLabel(b.attack)}</span>
+          <span><i style="background:#34d399"></i><b class="s-hp"></b></span>
+          <span><i style="background:#f97316"></i><b class="s-dmg"></b></span>
           <span><i style="background:#60a5fa"></i>${Math.round(specRange(b.attack))}</span>
         </div>
-        <div class="ctip">${b.tip}</div>`;
-      card.addEventListener('click', () => {
+        <div class="ctip">${b.tip}</div>
+        <div class="plevel"><span class="pnum"></span><span class="pbar"><span></span></span></div>
+        <button class="upbtn"></button>`;
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.upbtn')) return;      // upgrading is not picking
         this.brawler = b.id;
         for (const el of grid.children) el.classList.toggle('active', el.dataset.id === b.id);
         Sfx.resume();
         Sfx.play('tick');
         setTimeout(() => this.show('home'), 140);
       });
+      card.querySelector('.upbtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (Progress.upgrade(b.id)) {
+          Sfx.resume();
+          Sfx.play('charged');
+          this._paintPower(card, b);
+          for (const el of grid.children) this._paintPower(el, BRAWLER_BY_ID[el.dataset.id]);
+          this._refreshHome();
+        }
+      });
       grid.appendChild(card);
       paintPortrait(card.querySelector('.portrait'), b, 1);
+      this._paintPower(card, b);
+    }
+  },
+
+  /* Power chip, progress toward the next level, and the upgrade button. */
+  _paintPower(card, b) {
+    if (!card || !b) return;
+    const st = Progress.of(b.id);
+    const cost = upgradeCost(st.level);
+    card.querySelector('.pnum').textContent = `PWR ${st.level}`;
+    const m = powerMult(st.level);
+    const hpEl = card.querySelector('.s-hp');
+    const dmgEl = card.querySelector('.s-dmg');
+    if (hpEl) hpEl.textContent = Math.round(b.hp * m);
+    if (dmgEl) dmgEl.textContent = dmgLabel(b.attack, m);
+    const maxed = st.level >= MAX_POWER;
+    card.querySelector('.pbar span').style.width =
+      maxed ? '100%' : `${Math.round(clamp(st.points / cost.points, 0, 1) * 100)}%`;
+    const btn = card.querySelector('.upbtn');
+    if (maxed) {
+      btn.textContent = 'MAX POWER';
+      btn.disabled = true;
+    } else {
+      btn.textContent = `${st.points}/${cost.points} pts · ${cost.coins} coins`;
+      btn.disabled = !Progress.canUpgrade(b.id);
     }
   },
 
@@ -216,6 +256,35 @@ const UI = {
       rc.restore();
     }
 
+    // Starr Drops earned this match, opened one tap at a time.
+    const dropBox = document.getElementById('drop-result');
+    const openBtn = document.getElementById('drop-open');
+    const paintDrop = (reward) => {
+      const cv = document.getElementById('drop-canvas');
+      const c = cv.getContext('2d');
+      c.clearRect(0, 0, cv.width, cv.height);
+      c.save();
+      c.translate(cv.width / 2, cv.height / 2);
+      drawStarrDrop(c, 52, reward ? reward.rarity.color : '#8b7bbd', !!reward);
+      c.restore();
+      document.getElementById('drop-rarity').textContent =
+        reward ? reward.rarity.name : `${Progress.drops} Starr Drop${Progress.drops === 1 ? '' : 's'}`;
+      document.getElementById('drop-rarity').style.color = reward ? reward.rarity.color : 'var(--muted)';
+      document.getElementById('drop-text').textContent = reward ? reward.text : 'Tap to open';
+      openBtn.textContent = Progress.drops > 0 ? `Open (${Progress.drops})` : 'All opened';
+      openBtn.disabled = Progress.drops <= 0;
+    };
+    dropBox.classList.toggle('hidden', Progress.drops <= 0);
+    if (Progress.drops > 0) paintDrop(null);
+    openBtn.onclick = () => {
+      const reward = Progress.openDrop(this.brawler);
+      if (!reward) return;
+      Sfx.resume();
+      Sfx.play('win');
+      paintDrop(reward);
+      this._paintAllPower();
+    };
+
     const rows = Game.brawlers
       .slice()
       .sort((a, b) => (b.kills - a.kills) || (b.deaths - a.deaths))
@@ -232,13 +301,20 @@ const UI = {
 };
 
 /* Damage readout for a kit, whatever shape its attack takes. */
-function dmgLabel(a) {
+function dmgLabel(a, mult) {
   if (!a) return '—';
-  if (a.emit === 'alternate') return a.parts.map((x) => x.damage || 0).join(' / ');
-  if (a.emit === 'beam') return `${a.dps}/s`;
+  const m = mult || 1;
+  const v = (x) => Math.round((x || 0) * m);
+  if (a.emit === 'alternate') return a.parts.map((x) => v(x.damage)).join(' / ');
+  if (a.emit === 'beam') return `${v(a.dps)}/s`;
   const n = a.count > 1 ? `×${a.count}` : '';
-  return `${a.damage || 0}${n}`;
+  return `${v(a.damage)}${n}`;
 }
+
+UI._paintAllPower = function () {
+  const grid = document.getElementById('brawler-grid');
+  for (const el of grid.children) this._paintPower(el, BRAWLER_BY_ID[el.dataset.id]);
+};
 
 function on(id, fn) {
   const el = document.getElementById(id);

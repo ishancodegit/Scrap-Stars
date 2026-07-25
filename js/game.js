@@ -512,6 +512,7 @@ const Game = {
     this.rankResult = this.ranked
       ? Ranked.settle(winner === this.playerTeam, winner === -1)
       : null;
+    this.dropsWon = Progress.awardMatch(winner === this.playerTeam);
     Sfx.play(winner === this.playerTeam ? 'win' : 'lose');
     UI.showResult(winner);
   },
