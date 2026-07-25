@@ -13,8 +13,15 @@ const Input = {
   moveStick: null,
   aimStick: null,
   superTap: false,
+  superFlash: 0,
+  hyperFlash: 0,
+  aimReleased: false,
+  releaseAim: null,
 
   init(canvas) {
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+      this.usingTouch = true;
+    }
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
       this.keys.add(e.key.toLowerCase());
@@ -46,26 +53,55 @@ const Input = {
     canvas.addEventListener('touchcancel', (e) => this._touchEnd(e), { passive: false });
   },
 
+  /*
+   * One source of truth for where the on-screen controls live, shared by the
+   * hit-testing here and the drawing in render.js so they can never drift.
+   * Layout mirrors the real thing: move stick bottom-left, attack stick
+   * bottom-right, big Super button in the corner with Hyper stacked above it.
+   */
+  layout(w, h) {
+    const pad = Math.max(16, Math.min(w, h) * 0.05);
+    // Bound by width too, so the two sticks can never collide in portrait.
+    const r = Math.max(38, Math.min(Math.min(w, h) * 0.13, w * 0.11, 82));
+    return {
+      r,
+      move: { x: pad + r, y: h - pad - r, r },
+      aim: { x: w - pad - r * 4.2, y: h - pad - r * 0.9, r },
+      superBtn: { x: w - pad - r * 0.9, y: h - pad - r * 0.9, r: r * 0.72 },
+      hyperBtn: { x: w - pad - r * 2.25, y: h - pad - r * 1.25, r: r * 0.5 },
+    };
+  },
+
+  _hit(p, x, y, slack = 8) {
+    return Math.hypot(x - p.x, y - p.y) <= p.r + slack;
+  },
+
   _touchStart(e, canvas) {
     e.preventDefault();
     this.usingTouch = true;
     const r = canvas.getBoundingClientRect();
+    const L = this.layout(r.width, r.height);
+
     for (const t of e.changedTouches) {
       const x = t.clientX - r.left, y = t.clientY - r.top;
-      // Bottom-right corner is the super button.
-      if (x > r.width - 120 && y > r.height - 210 && y < r.height - 120) {
+
+      // Buttons win over the sticks they sit next to.
+      if (this._hit(L.superBtn, x, y)) {
         this.superQueued = true;
-        this.superTap = true;
+        this.superFlash = 0.3;
         continue;
       }
-      if (x > r.width - 220 && x < r.width - 130 && y > r.height - 190 && y < r.height - 110) {
+      if (this._hit(L.hyperBtn, x, y)) {
         this.hyperQueued = true;
+        this.hyperFlash = 0.3;
         continue;
       }
+
+      // Sticks float to wherever the thumb actually landed.
       if (x < r.width / 2 && !this.moveStick) {
         this.moveStick = { id: t.identifier, ox: x, oy: y, x, y };
       } else if (x >= r.width / 2 && !this.aimStick) {
-        this.aimStick = { id: t.identifier, ox: x, oy: y, x, y };
+        this.aimStick = { id: t.identifier, ox: x, oy: y, x, y, r: L.r };
       }
     }
   },
@@ -84,7 +120,14 @@ const Input = {
     e.preventDefault();
     for (const t of e.changedTouches) {
       if (this.moveStick && t.identifier === this.moveStick.id) this.moveStick = null;
-      if (this.aimStick && t.identifier === this.aimStick.id) this.aimStick = null;
+      if (this.aimStick && t.identifier === this.aimStick.id) {
+        // Releasing is what fires: a drag shoots where you aimed, a tap
+        // without any drag auto-aims at the nearest target.
+        const v = this.stickVector(this.aimStick, this.aimStick.r || 70);
+        this.releaseAim = v.len > 0.15 ? { angle: Math.atan2(v.y, v.x), len: v.len } : null;
+        this.aimReleased = true;
+        this.aimStick = null;
+      }
     }
   },
 
@@ -120,6 +163,12 @@ const Input = {
   consumeHyper() {
     const q = this.hyperQueued;
     this.hyperQueued = false;
+    return q;
+  },
+
+  consumeAimRelease() {
+    const q = this.aimReleased;
+    this.aimReleased = false;
     return q;
   },
 };

@@ -330,3 +330,41 @@ tr.enemy td:first-child { color: #fb7185; }
   .detail { position: static; }
   #search { width: 100%; }
 }
+
+@media (pointer: coarse) {
+  .corner-note { display: none; }
+}
+
+/* ---------- portrait nudge (touch devices only) ---------- */
+
+.rotate { display: none; }
+
+@media (pointer: coarse) and (orientation: portrait) {
+  .rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    background: #0f0a08;
+    text-align: center;
+  }
+  .rotate-inner { display: grid; gap: 14px; justify-items: center; padding: 28px; }
+  .rotate p { font-size: 19px; font-weight: 700; color: var(--text); }
+  .rotate span { font-size: 13px; color: var(--muted); }
+  .phone {
+    width: 52px;
+    height: 92px;
+    border: 3px solid var(--accent);
+    border-radius: 10px;
+    animation: tip 1.8s ease-in-out infinite;
+  }
+  @keyframes tip {
+    0%, 40% { transform: rotate(0deg); }
+    60%, 100% { transform: rotate(-90deg); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone { animation: none; transform: rotate(-90deg); }
+}

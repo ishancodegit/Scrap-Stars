@@ -154,11 +154,29 @@ const Game = {
     inp.mx = mv.x;
     inp.my = mv.y;
 
-    if (Input.aimStick) {
-      const v = Input.stickVector(Input.aimStick);
-      if (v.len > 0.15) {
-        inp.aim = Math.atan2(v.y, v.x);
-        inp.aimDist = 80 + v.len * (specRange(p.def.attack) - 80);
+    if (Input.usingTouch) {
+      const reach = specRange(p.def.attack);
+      if (Input.aimStick) {
+        // Holding the stick aims; the shot waits for the release.
+        const v = Input.stickVector(Input.aimStick, Input.aimStick.r || 70);
+        if (v.len > 0.15) {
+          inp.aim = Math.atan2(v.y, v.x);
+          inp.aimDist = 80 + v.len * (reach - 80);
+        }
+        inp.fire = false;
+      } else if (Input.consumeAimRelease()) {
+        if (Input.releaseAim) {
+          inp.aim = Input.releaseAim.angle;
+          inp.aimDist = 80 + Input.releaseAim.len * (reach - 80);
+        } else {
+          // Bare tap: point at the closest enemy we can actually see.
+          const foe = this._nearestVisibleEnemy(p, reach * 1.6);
+          if (foe) {
+            inp.aim = Math.atan2(foe.y - p.y, foe.x - p.x);
+            inp.aimDist = dist(p.x, p.y, foe.x, foe.y);
+          }
+        }
+        Input.releaseAim = null;
         inp.fire = true;
       } else {
         inp.fire = false;
@@ -172,6 +190,17 @@ const Game = {
 
     inp.super = Input.consumeSuper();
     inp.hyper = Input.consumeHyper();
+  },
+
+  _nearestVisibleEnemy(from, maxDist) {
+    let best = null, bestD = maxDist * maxDist;
+    for (const b of this.brawlers) {
+      if (!b.alive || b.team === from.team) continue;
+      if (b.hidden && dist(from.x, from.y, b.x, b.y) > BUSH_REVEAL_DIST) continue;
+      const d = dist2(from.x, from.y, b.x, b.y);
+      if (d < bestD) { bestD = d; best = b; }
+    }
+    return best;
   },
 
   _updateAreas(dt) {

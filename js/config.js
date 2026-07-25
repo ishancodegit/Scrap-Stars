@@ -40,19 +40,22 @@ const HYPER = {
 
 const STATUS_TICK = 0.25;
 
+/* Warm desert arena: sand floor, terracotta rock, chunky green scrub. */
 const PALETTE = {
-  bg: '#0a0b0f',
-  floor: '#1b2330',
-  floorAlt: '#19202c',
-  grid: 'rgba(255,255,255,.028)',
-  rock: '#39414f',
-  rockTop: '#4b5567',
-  crate: '#7c5230',
-  crateTop: '#9a6a3f',
-  bush: '#1f7a4d',
-  bushTop: '#2ea56a',
+  bg: '#6f4230',
+  floor: '#e09a6f',
+  floorAlt: '#da9065',
+  grid: 'rgba(120,60,30,.07)',
+  rock: '#b0573a',
+  rockTop: '#cd7150',
+  rockSide: '#8d4029',
+  crate: '#b3814a',
+  crateTop: '#d39c5f',
+  bush: '#3f9a37',
+  bushTop: '#5fc44d',
   gem: '#a855f7',
   accent: '#22d3ee',
+  hud: 'rgba(24,16,12,.72)',
 };
 
 const RARITY = {

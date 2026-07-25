@@ -23,8 +23,20 @@ is never safe. Matches also end at 3:00, highest count wins.
 | `Q` / middle-click | Hypercharge |
 | `P` pause · `M` mute | |
 
-On a phone it's twin-stick: left thumb moves, right thumb aims and fires, with
-Super and Hypercharge buttons in the bottom-right corner.
+### On a phone
+
+Landscape, twin-stick, laid out like the mobile game it's paying homage to:
+
+- **Left thumb** — floating move stick, appears wherever you press.
+- **Right thumb** — attack stick. **Drag to aim, release to fire.** A cone
+  shows direct fire; throwers get a landing circle instead. A bare tap
+  auto-aims at the nearest target you can see.
+- **Super** — big disc in the corner; the gold ring around it fills as the
+  Super charges and glows when it's ready.
+- **Hypercharge** — smaller disc beside it with its own orange ring.
+- Ammo sits under your own nameplate, one segment per shot.
+
+Portrait shows a rotate prompt — the game is landscape only.
 
 ## What's in it
 
@@ -47,6 +59,8 @@ Super and Hypercharge buttons in the bottom-right corner.
 - Destructible crates, bushes that hide you, knockback, poison, slow, stun,
   shields, invisibility, turrets and pets, temporary walls, and a camera that
   keeps the arena in frame.
+- Nameplates carry the hit points inside the bar and draw above the foliage, so
+  a brawler sitting in a bush is still readable. Everyone stands on a team ring.
 
 ## Running it
 
