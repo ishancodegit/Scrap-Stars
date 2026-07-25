@@ -1,17 +1,20 @@
 # Scrap Stars
 
 A 3v3 top-down arena brawler that runs in the browser. No build step, no
-dependencies, no assets — every sprite, sound and effect is generated in code.
-Open `index.html` and play.
+dependencies, no image or audio files — every character, prop and sound is
+generated in code. Open `index.html` and play.
 
-**107 brawlers**, each with their own attack, Super and Hypercharge.
+**11 brawlers · 5 game modes · momentum-based movement.**
 
-## The mode
+## Modes
 
-Gem Grab. A mine in the middle of the arena spits out a gem every few seconds.
-Hold **10 gems as a team** and a **15-second countdown** starts — survive it and
-you win. Kill a carrier and every gem they hold spills onto the floor, so a lead
-is never safe. Matches also end at 3:00, highest count wins.
+| Mode | Length | How you win |
+|---|---|---|
+| **Gem Grab** | 3:00 | Collect gems from the mine. Hold ten as a team for fifteen seconds. |
+| **Brawl Ball** | 2:30 | Carry or kick the ball into their goal. First to two. |
+| **Bounty** | 2:00 | Every kill is worth a star, and stars stack on whoever is winning. |
+| **Heist** | 2:30 | Crack the enemy safe before they crack yours. |
+| **Knockout** | 2:00 | No respawns. Wipe the other team twice. |
 
 ## Controls
 
@@ -25,123 +28,121 @@ is never safe. Matches also end at 3:00, highest count wins.
 
 ### On a phone
 
-Landscape, twin-stick, laid out like the mobile game it's paying homage to:
+Landscape, twin-stick. Left thumb moves, right thumb aims — **drag to aim,
+release to fire**, and a bare tap auto-aims at the nearest target. The Super is
+the gold-ringed disc in the corner (the ring is its charge), Hypercharge sits
+beside it. Ammo shows under your own nameplate. Portrait gets a rotate prompt.
 
-- **Left thumb** — floating move stick, appears wherever you press.
-- **Right thumb** — attack stick. **Drag to aim, release to fire.** A cone
-  shows direct fire; throwers get a landing circle instead. A bare tap
-  auto-aims at the nearest target you can see.
-- **Super** — big disc in the corner; the gold ring around it fills as the
-  Super charges and glows when it's ready.
-- **Hypercharge** — smaller disc beside it with its own orange ring.
-- Ammo sits under your own nameplate, one segment per shot.
+## Movement
 
-Portrait shows a rotate prompt — the game is landscape only.
+Movement is accelerative, the way Counter-Strike does it, not the instant
+start-stop most top-down games use:
 
-## What's in it
+```
+friction  bleeds the whole velocity vector every frame
+accelerate tops it back up — only along the direction you asked for,
+           and only up to that brawler's cap
+```
 
-- **107 brawlers** across seven rarity tiers, filterable and searchable in the
-  picker, each with a stat line and a plain-English breakdown of its kit.
-- **Kits that behave like the originals.** Shelly fans a shotgun cone, Colt
-  walks a line of six bullets, Rico ricochets off walls, Piper hits harder the
-  further the shot travels, Carl's pickaxe flies out and comes back (and he
-  can't fire until it does), Belle's bolt chains between targets, Spike's cactus
-  bursts into spikes, Squeak's blob sticks then splits, Nori swings a fishing
-  rod and banks a fish for every hit to grow his Super, Meeple's d20 lets the
-  whole team shoot through walls, Najia's snakes chase you down and keep biting.
-- **Supers and Hypercharges.** Every brawler has both. A Hypercharge fills only
-  once the Super is already up, then grants the usual speed/damage/shield
-  package for a few seconds *and* upgrades that brawler's Super while it lasts.
-- **Bots that actually play the mode.** They path with a BFS flow field, lead
-  their shots, strafe at their preferred range, hide in bushes, hunt the gem
-  carrier, escort their own carrier when ahead, and abandon the mine entirely to
-  break a countdown when they're locked out.
-- Destructible crates, bushes that hide you, knockback, poison, slow, stun,
-  shields, invisibility, turrets and pets, temporary walls, and a camera that
-  keeps the arena in frame.
-- Nameplates carry the hit points inside the bar and draw above the foliage, so
-  a brawler sitting in a bush is still readable. Everyone stands on a team ring.
+You ramp from 0 to full speed over about 0.15s, carry momentum through a turn,
+glide briefly when you let go, and keep sliding when something knocks you back
+instead of the knockback being cancelled the instant you hold a key. Knockbacks
+and vortex pulls are impulses straight into velocity, so friction handles them
+for free.
+
+## The brawlers
+
+Eleven, deliberately — each one is the only thing in the game that does what it
+does, and each has an attack, a Super and a Hypercharge.
+
+**Shelly** shotgun cone · **Colt** a line of six bullets · **Bull** point-blank
+barrels and a wall-smashing charge · **El Primo** four-punch combo and an elbow
+drop · **Rico** bullets that ricochet off walls · **Barley** bottles that pool
+into burning ground · **Poco** waves that pierce everyone and a chorus that
+heals · **Piper** damage that scales with how far the shot flew · **Mortis**
+attacks *by* dashing through you · **Spike** a cactus that bursts into spikes ·
+**Nori** a wide rod swing that banks a fish per hit to grow his Super.
+
+A Hypercharge fills only once the Super is already up, then grants speed,
+damage and shield for six seconds *and* upgrades that brawler's Super.
+
+## Art
+
+Everything is drawn with canvas paths — one house style of chunky silhouettes,
+thick dark ink outlines and a saturated body colour with a lighter rim.
+Characters are drawn upright facing right and mirrored when aiming left, the
+way a 2D cartoon reads; only the weapon rotates to the aim angle. The same
+`Sprites` code draws the menu portraits, so the picker always matches the game.
 
 ## Running it
 
-Any static host, or just open the file:
-
 ```
-open index.html            # file:// works — everything is a classic script
-python3 -m http.server 8000   # or serve it, if you prefer
+open index.html               # file:// works — everything is a classic script
+python3 -m http.server 8000   # or serve it
 ```
 
 ## How it's put together
 
 ```
-index.html          markup + menus
-css/style.css       styling
-js/config.js        tuning constants, palette, helpers
-js/map.js           arena generation, collision, line of sight, flow fields
-js/abilities.js     the ability engine — turns kit data into things happening
-js/entities.js      brawlers, projectiles, lobs, beams, summons, gems
-js/roster.js        brawler data — Starting → Epic
-js/roster2.js       brawler data — Mythic → Ultra Legendary
-js/roster3.js       brawler data — the rest, including the 2025/26 intake
-js/ai.js            bot perception, targeting, navigation
-js/input.js         keyboard, mouse and touch
-js/render.js        all drawing, world and HUD
-js/game.js          match state and the simulation loop
-js/ui.js            brawler picker and result screen
+index.html        markup, home screen and menus
+css/style.css     styling
+js/config.js      tuning constants, movement values, palette, helpers
+js/map.js         arena generation, collision, line of sight, flow fields
+js/roster.js      the eleven brawlers, as data
+js/sprites.js     all character and prop art
+js/abilities.js   the ability engine — turns kit data into things happening
+js/entities.js    brawlers, projectiles, lobs, beams, summons, gems
+js/modes.js       the five game modes
+js/ai.js          bot perception, targeting, navigation
+js/input.js       keyboard, mouse and touch
+js/render.js      all drawing, world and HUD
+js/game.js        match state and the simulation loop
+js/ui.js          home screen, pickers, result screen
 ```
 
-Kits are **data, not code**. A brawler describes what it does with an `emit`
-kind plus rider effects, and the ability engine does the rest:
+Kits are **data, not code**. A brawler declares an `emit` kind plus rider
+effects and the ability engine does the rest:
 
 ```js
-{
-  id: 'rico', name: 'Rico', rarity: 'superrare', cls: 'damage',
-  attack: {
-    emit: 'projectiles', count: 5, pattern: 'stream', interval: 0.06,
-    damage: 300, speed: 860, range: 460, bounce: 4,
-  },
-  super: { /* … */ },
-  hyper: { name: 'Trick Shot', super: { count: 12, bounce: 8 } },
+attack: {
+  emit: 'projectiles', count: 5, pattern: 'stream',
+  interval: 0.055, damage: 295, bounce: 4,     // Rico
 }
 ```
 
 Emitters: `projectiles`, `lob`, `melee`, `beam`, `dash`, `leap`, `summon`,
-`self`, `area`, `pull`, `walls`, `teleport`, `delayedArea`, `random`, `multi`.
-Rider effects any damaging spec can carry: `pierce`, `bounce`, `returns`,
-`homing`, `chain`, `sticky`, `splitOnEnd`, `scale`, `knockback`, `stun`,
-`slow`, `poison`, `lifesteal`, `healAllies`, `ignoreWalls`, `breakWalls`.
+`self`, `area`, `pull`, `walls`, `teleport`, `delayedArea`, `multi`. Riders:
+`pierce`, `bounce`, `returns`, `homing`, `chain`, `sticky`, `splitOnEnd`,
+`scale`, `knockback`, `stun`, `slow`, `poison`, `lifesteal`, `healAllies`,
+`ignoreWalls`, `breakWalls`.
 
-Adding a brawler means adding one object. No engine changes.
+Modes are the same idea — a handful of hooks (`init`, `update`, `onKill`,
+`score`, `banner`, `botGoal`, `interceptFire`). `botGoal` is what makes the bots
+actually play the objective: chase the ball, hit the safe, hunt the gem carrier.
 
-### One thing worth knowing
+### Two things worth knowing
 
-Bots decide and act in **two separate passes** over the roster. When they did
-both in a single pass, bots later in the array aimed at positions already
-updated that frame while earlier ones aimed at stale ones — a free accuracy
-edge that handed the trailing team roughly a **3:1 win rate** on a provably
-symmetric map. Splitting the phases took kills across 36 test matches to
-505–500. The pass order also alternates each frame so neither side is
-permanently first to a contested gem.
+**Bots decide and act in two separate passes.** When they did both in one pass,
+bots later in the array aimed at positions already updated that frame while
+earlier ones aimed at stale ones — a free accuracy edge worth roughly a 3:1 win
+rate on a provably symmetric map. Splitting the phases evened it out. Pass order
+also alternates each frame so neither side is permanently first to a gem.
 
-## Accuracy notes
+**Engagement range can't be tied to attack range.** Melee brawlers only started
+chasing within 1.3× their reach — 135px for a punch — so they never committed
+and sat at 0.3 K/D. They now commit from 300px and drive straight in instead of
+orbiting.
 
-This is a fan project and a homage, built from scratch. It contains no assets,
-code or data from the original game.
+## Balance
 
-- **Stats are tuned for this engine.** Health and damage numbers are balanced
-  for how this game plays, not copied from live balance tables — those change
-  every patch.
-- **Kits are modelled on behaviour.** Most brawlers play the way they do in the
-  original. Where I couldn't verify a kit from a source, the entry is marked
-  `derived: true` and shows a `~` in the picker — those are built from the
-  brawler's class rather than presented as accurate. 36 of 107 are flagged this
-  way, mostly the 2025/26 intake and a few Supers with mechanics this engine
-  doesn't model (mind control, revives, mode-switching).
-- Corrections welcome — a fix is usually a few lines of data.
-
-Brawl Stars is a trademark of Supercell. This project is not affiliated with,
-endorsed by, or connected to Supercell in any way.
+Tuned against a 40-match bot-vs-bot simulation, checked per brawler and per
+side. The damage-dealer cluster sits between about 1.2 and 1.4 K/D. Melee
+brawlers and the support sit below 1.0 there — bots are worse than people at
+using cover to close distance, and Poco's value is healing rather than kills —
+so those numbers understate them in human hands. Per-brawler samples are ~20
+matches, so treat any single figure as ±0.3.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). A fan project and a homage, built from scratch;
+it contains no assets, code or data from any commercial game.

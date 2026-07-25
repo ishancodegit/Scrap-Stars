@@ -69,7 +69,15 @@ function updateBot(bot, game, dt) {
   ai.reaction = Math.max(0, ai.reaction - dt);
 
   const range = specRange(bot.def.attack);
-  const target = ai.target;
+  let target = ai.target;
+  if (!target && game.safes) {
+    const safe = game.safes[1 - bot.team];
+    if (safe && !safe.dead && dist(bot.x, bot.y, safe.x, safe.y) < range * 0.9 &&
+        GameMap.lineOfSight(bot.x, bot.y, safe.x, safe.y)) {
+      target = { x: safe.x, y: safe.y, vx: 0, vy: 0, radius: safe.radius, gems: 0,
+        hp: safe.hp, maxHp: safe.maxHp, alive: true, structure: true };
+    }
+  }
   const targetDist = target ? dist(bot.x, bot.y, target.x, target.y) : Infinity;
   const lowHp = bot.hp / bot.maxHp < cfg.retreatHp;
 
@@ -90,9 +98,11 @@ function updateBot(bot, game, dt) {
 
   /* ---- combat ---- */
   const atkEmit = bot.def.attack.emit;
+  const brawlerish = atkEmit === 'melee' || atkEmit === 'dash';
+  const engageDist = Math.max(range * 1.3, brawlerish ? 300 : 0);
   const lobber = atkEmit === 'lob' || bot.def.attack.ignoreWalls;
   const canShoot = target && ai.reaction <= 0 && targetDist < range * 0.92 &&
-    (lobber || GameMap.lineOfSight(bot.x, bot.y, target.x, target.y));
+    (lobber || target.structure || GameMap.lineOfSight(bot.x, bot.y, target.x, target.y));
 
   if (canShoot) {
     if (bot.hyperReady && bot.superReady) inp.hyper = true;
@@ -115,55 +125,33 @@ function updateBot(bot, game, dt) {
   /* ---- where to go ---- */
   let goalX, goalY, direct = false;
 
-  if (lowHp && !enemyLocked && target && targetDist < range * 1.5) {
+  if (lowHp && !enemyLocked && target && targetDist < engageDist * 1.2) {
     // Back off toward friendly ground. Never when the clock is against us.
     const away = Math.atan2(bot.y - target.y, bot.x - target.x);
     goalX = clamp(bot.x + Math.cos(away) * 260, TILE, WORLD_W - TILE);
     goalY = clamp(bot.y + Math.sin(away) * 260, TILE, WORLD_H - TILE);
     direct = true;
-  } else if (target && targetDist < range * 1.3) {
-    // Hold a comfortable firing distance and strafe.
-    const brawlerish = atkEmit === 'melee' || atkEmit === 'dash';
-    const ideal = brawlerish ? range * 0.45 : range * (lobber ? 0.7 : 0.6);
+  } else if (target && targetDist < engageDist) {
+    // Ranged kits hold a firing distance and strafe. Melee kits commit —
+    // orbiting at knife range just means eating damage without dealing any.
+    const ideal = brawlerish ? range * 0.55 : range * (lobber ? 0.7 : 0.6);
     const toward = Math.atan2(target.y - bot.y, target.x - bot.x);
     const push = targetDist < ideal * 0.8 ? -1 : targetDist > ideal * 1.15 ? 1 : 0;
     const strafe = toward + Math.PI / 2 * ai.strafeDir;
-    goalX = bot.x + Math.cos(toward) * push * 120 + Math.cos(strafe) * 90;
-    goalY = bot.y + Math.sin(toward) * push * 120 + Math.sin(strafe) * 90;
+    const closing = brawlerish ? 230 : 120;
+    const sidestep = brawlerish ? 18 : 90;
+    goalX = bot.x + Math.cos(toward) * push * closing + Math.cos(strafe) * sidestep;
+    goalY = bot.y + Math.sin(toward) * push * closing + Math.sin(strafe) * sidestep;
     direct = true;
-  } else if (enemyLocked) {
-    // Locked out — the mine is worthless now, go break the carrier.
-    const carrier = topCarrier(game, 1 - bot.team);
-    if (carrier) { goalX = carrier.x; goalY = carrier.y; }
-    else { goalX = GameMap.centerX(); goalY = GameMap.centerY(); }
-  } else if (weAreLocked) {
-    const mine = { x: GameMap.centerX(), y: GameMap.centerY() };
-    const home = GameMap.spawns[bot.team][1];
-    if (bot.gems > 0) {
-      // Carrying the win: back off the middle and run the clock down.
-      goalX = lerp(home.x, mine.x, 0.45);
-      goalY = lerp(home.y, mine.y, 0.45);
-    } else {
-      // Escort whoever is holding the gems.
-      const friend = topCarrier(game, bot.team);
-      if (friend) {
-        goalX = friend.x + Math.cos(ai.wanderAngle) * 90;
-        goalY = friend.y + Math.sin(ai.wanderAngle) * 90;
-        ai.wanderAngle += dt * 1.1;
-      } else {
-        goalX = lerp(home.x, mine.x, 0.5);
-        goalY = lerp(home.y, mine.y, 0.5);
-      }
-    }
   } else {
-    const gem = nearestGem(bot, game);
-    const mine = { x: GameMap.centerX(), y: GameMap.centerY() };
-
-    if (gem) {
-      goalX = gem.x; goalY = gem.y;
+    const goal = game.mode && game.mode.botGoal ? game.mode.botGoal(game, bot) : null;
+    if (goal) {
+      goalX = goal.x;
+      goalY = goal.y;
     } else {
-      goalX = mine.x + Math.cos(ai.wanderAngle) * 70;
-      goalY = mine.y + Math.sin(ai.wanderAngle) * 70;
+      // Nothing mode-specific to do: contest the middle.
+      goalX = GameMap.centerX() + Math.cos(ai.wanderAngle) * 90;
+      goalY = GameMap.centerY() + Math.sin(ai.wanderAngle) * 90;
       ai.wanderAngle += dt * 0.7;
     }
   }
@@ -206,7 +194,7 @@ function decideSuper(bot, game, target, targetDist) {
     case 'dash':
     case 'leap':
     case 'teleport':
-      return targetDist < reach * 0.95;
+      return targetDist < reach * 0.95 && targetDist > (bot.radius + 30);
     case 'self':
       // Buffs and shields are worth it once someone is actually shooting at us.
       return bot.hp < bot.maxHp * 0.75 || targetDist < reach;

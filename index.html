@@ -4,11 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Scrap Stars — 3v3 Arena Brawler</title>
-<meta name="description" content="Scrap Stars — a fast 3v3 top-down arena brawler in the browser. Dozens of brawlers, each with their own attack, Super and Hypercharge. Grab gems, hold ten for fifteen seconds, win." />
+<meta name="description" content="Scrap Stars — a fast 3v3 top-down arena brawler in the browser. Eleven brawlers, five game modes, no downloads." />
 <meta property="og:title" content="Scrap Stars — 3v3 Arena Brawler" />
-<meta property="og:description" content="A browser-based 3v3 gem-grab brawler. Every brawler has its own attack, Super and Hypercharge." />
+<meta property="og:description" content="A browser 3v3 brawler: five modes, eleven brawlers, momentum-based movement." />
 <meta property="og:type" content="website" />
-<meta name="theme-color" content="#0a0b0f" />
+<meta name="theme-color" content="#1b1210" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💥</text></svg>" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -16,71 +16,86 @@
 
 <canvas id="game"></canvas>
 
-<!-- Main menu -->
-<div id="menu" class="overlay">
-  <div class="panel">
-    <div class="titlebar">
-      <h1>SCRAP<span>STARS</span></h1>
-      <p class="tag">3v3 top-down brawler · grab <b>10 gems</b> and hold them for <b>15 seconds</b></p>
-    </div>
+<!-- Home -->
+<div id="home" class="overlay">
+  <div class="home">
+    <h1 class="logo"><span>SCRAP</span><em>STARS</em></h1>
 
-    <div class="pickhead">
-      <div class="section-title">Pick your brawler <em id="count"></em></div>
-      <input id="search" type="search" placeholder="Search name, class or rarity…" autocomplete="off" />
-    </div>
-    <div id="filters" class="filters"></div>
+    <div class="home-cards">
+      <button id="pick-brawler" class="bigcard">
+        <span class="tagline">Brawler</span>
+        <canvas id="home-portrait" class="portrait big" width="190" height="190"></canvas>
+        <div id="home-brawler-name" class="bigname">Shelly</div>
+        <div id="home-brawler-class" class="bigsub">Damage Dealer</div>
+        <span class="change">Change ›</span>
+      </button>
 
-    <div class="pickbody">
-      <div id="brawler-grid" class="brawler-grid"></div>
-      <aside id="detail" class="detail"></aside>
-    </div>
-
-    <div class="row">
-      <div class="control-block">
-        <div class="section-title">Bot skill</div>
-        <div class="diffs">
-          <button class="diff" data-diff="easy">Easy</button>
-          <button class="diff active" data-diff="normal">Normal</button>
-          <button class="diff" data-diff="hard">Hard</button>
-        </div>
-      </div>
-      <div class="control-block grow">
-        <div class="section-title">Controls</div>
-        <ul class="controls">
-          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot</li>
-          <li><kbd>Space</kbd> / <kbd>Right-click</kbd> Super · <kbd>Q</kbd> Hypercharge</li>
-          <li><kbd>P</kbd> pause · <kbd>M</kbd> mute</li>
-          <li class="touch-note">On a phone: left thumb moves, right thumb aims &amp; fires.</li>
-        </ul>
-      </div>
+      <button id="pick-mode" class="bigcard">
+        <span class="tagline">Mode</span>
+        <canvas id="home-mode-icon" class="modeicon big" width="150" height="150"></canvas>
+        <div id="home-mode-name" class="bigname">Gem Grab</div>
+        <div id="home-mode-blurb" class="bigsub small"></div>
+        <span class="change">Change ›</span>
+      </button>
     </div>
 
     <button id="play" class="play">PLAY</button>
-    <p class="fineprint">
-      Hide in bushes. Smash crates with Supers. Kill a carrier and they drop every gem they hold.
-      Charge your Super by dealing damage — keep dealing it and the Hypercharge lights up.
-    </p>
+
+    <div class="homefoot">
+      <div class="diffs">
+        <button class="diff" data-diff="easy">Easy</button>
+        <button class="diff active" data-diff="normal">Normal</button>
+        <button class="diff" data-diff="hard">Hard</button>
+      </div>
+      <p class="keys">
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move ·
+        <kbd>Mouse</kbd> aim · <kbd>Click</kbd> shoot ·
+        <kbd>Space</kbd> Super · <kbd>Q</kbd> Hypercharge
+      </p>
+    </div>
   </div>
 </div>
 
-<!-- Result screen -->
+<!-- Brawler picker -->
+<div id="brawlers" class="overlay hidden">
+  <div class="sheet">
+    <div class="sheethead">
+      <h2>Brawlers</h2>
+      <button id="brawlers-back" class="ghost">Back</button>
+    </div>
+    <div id="brawler-grid" class="grid"></div>
+  </div>
+</div>
+
+<!-- Mode picker -->
+<div id="modes" class="overlay hidden">
+  <div class="sheet">
+    <div class="sheethead">
+      <h2>Game modes</h2>
+      <button id="modes-back" class="ghost">Back</button>
+    </div>
+    <div id="mode-list" class="modelist"></div>
+  </div>
+</div>
+
+<!-- Result -->
 <div id="result" class="overlay hidden">
-  <div class="panel narrow">
+  <div class="sheet narrow">
     <h2 id="result-title">Victory</h2>
-    <p id="result-sub" class="tag"></p>
+    <p id="result-sub" class="sub"></p>
     <table id="scoreboard"></table>
     <div class="row buttons">
       <button id="again" class="play">PLAY AGAIN</button>
-      <button id="menu-btn" class="ghost">CHANGE BRAWLER</button>
+      <button id="result-home" class="ghost">HOME</button>
     </div>
   </div>
 </div>
 
 <!-- Pause -->
 <div id="paused" class="overlay hidden soft">
-  <div class="panel narrow">
+  <div class="sheet narrow">
     <h2>Paused</h2>
-    <p class="tag">Press <kbd>P</kbd> to resume</p>
+    <p class="sub">Press <kbd>P</kbd> to resume</p>
   </div>
 </div>
 
@@ -98,10 +113,10 @@
 <script src="js/audio.js"></script>
 <script src="js/map.js"></script>
 <script src="js/roster.js"></script>
-<script src="js/roster2.js"></script>
-<script src="js/roster3.js"></script>
+<script src="js/sprites.js"></script>
 <script src="js/abilities.js"></script>
 <script src="js/entities.js"></script>
+<script src="js/modes.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/input.js"></script>
 <script src="js/render.js"></script>

@@ -83,7 +83,8 @@ const Renderer = {
     this._drawFloor(ctx);
     this._drawAreas(ctx, game);
     this._drawTelegraphs(ctx, game);
-    this._drawMine(ctx, game);
+    if (game.mode.id === 'gem') this._drawMine(ctx, game);
+    this._drawObjectives(ctx, game);
     this._drawGems(ctx, game);
     this._drawProjectiles(ctx, game);
     this._drawSummons(ctx, game);
@@ -213,6 +214,37 @@ const Renderer = {
     ctx.restore();
   },
 
+  _drawObjectives(ctx, game) {
+    // Brawl Ball goals.
+    for (const go of (game.goals || [])) {
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = TEAM_COLOR[go.team];
+      ctx.lineWidth = 5;
+      ctx.setLineDash([12, 8]);
+      ctx.beginPath();
+      ctx.arc(go.x, go.y, 46, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = TEAM_COLOR[go.team];
+      ctx.fill();
+      ctx.restore();
+    }
+
+    const ball = game.ball;
+    if (ball) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(60,25,12,.3)';
+      ctx.beginPath();
+      ctx.ellipse(ball.x, ball.y + 10, ball.radius, ball.radius * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.translate(ball.x, ball.y);
+      Sprites.ball(ctx, ball.radius, game.time);
+      ctx.restore();
+    }
+  },
+
   _drawGems(ctx, game) {
     for (const g of game.gems) {
       const bob = Math.sin(game.time * 4 + g.x * 0.05) * 3;
@@ -222,12 +254,14 @@ const Renderer = {
       ctx.beginPath();
       ctx.ellipse(0, 12 - bob, 9, 4, 0, 0, Math.PI * 2);
       ctx.fill();
-      this._gemShape(ctx, 11);
+      Sprites.gem(ctx, 11);
       ctx.restore();
     }
   },
 
-  _gemShape(ctx, r) {
+  _gemShape(ctx, r) { Sprites.gem(ctx, r); },
+
+  _gemShapeOld(ctx, r) {
     ctx.fillStyle = PALETTE.gem;
     ctx.strokeStyle = '#e9d5ff';
     ctx.lineWidth = 2;
@@ -370,58 +404,31 @@ const Renderer = {
       ctx.fill();
     }
 
-    // Facing wedge.
-    ctx.fillStyle = TEAM_COLOR[b.team];
-    ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.arc(b.x, b.y, r * 1.5, b.angle - 0.32, b.angle + 0.32);
-    ctx.closePath();
-    ctx.globalAlpha *= 0.75;
-    ctx.fill();
-    ctx.globalAlpha = b.hidden ? 0.6 : 1;
-
-    ctx.fillStyle = b.hurtFlash > 0 ? '#ffffff' : b.def.color;
-    ctx.strokeStyle = TEAM_COLOR[b.team];
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    if (b.hyperActive > 0) {
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = 0.5 + Math.sin(game.time * 14) * 0.25;
+    // The character itself.
+    if (b.hurtFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha *= 0.9;
+      Sprites.drawBrawler(ctx, b, game.time);
+      ctx.restore();
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = b.hurtFlash * 0.5;
+      ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(b.x, b.y, r + 8, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = b.hidden ? 0.6 : 1;
+      ctx.arc(b.x, b.y - r * 0.4, r * 1.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      Sprites.drawBrawler(ctx, b, game.time);
     }
-    if (b.shieldHp > 0) {
-      ctx.strokeStyle = '#7dd3fc';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, r + 4, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    if (b.stunUntil > 0) {
-      ctx.fillStyle = '#fde047';
-      ctx.font = '14px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('★', b.x, b.y - r - 26);
-    }
+
     if (b.spawnGuard > 0) {
       ctx.strokeStyle = 'rgba(255,255,255,.7)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, r + 5, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y - r * 0.3, r + 8, 0, Math.PI * 2);
       ctx.stroke();
     }
-
-    ctx.font = `${Math.round(r * 1.15)}px system-ui, "Segoe UI Emoji", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(b.def.icon, b.x, b.y + 1);
 
     ctx.restore();
   },
@@ -513,6 +520,19 @@ const Renderer = {
       ctx.beginPath();
       ctx.ellipse(s.x, s.y + s.radius * 0.7, s.radius * 0.95, s.radius * 0.45, 0, 0, Math.PI * 2);
       ctx.fill();
+
+      if (s.kind === 'safe') {
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        Sprites.safe(ctx, s.radius * 2.1, s.radius * 1.7, s.team, clamp(s.hp / s.maxHp, 0, 1));
+        ctx.restore();
+        const bw = s.radius * 2.4;
+        ctx.fillStyle = 'rgba(0,0,0,.55)';
+        ctx.fillRect(s.x - bw / 2 - 2, s.y - s.radius - 18, bw + 4, 10);
+        ctx.fillStyle = TEAM_COLOR[s.team];
+        ctx.fillRect(s.x - bw / 2, s.y - s.radius - 16, bw * clamp(s.hp / s.maxHp, 0, 1), 6);
+        continue;
+      }
 
       if (s.kind === 'mine') {
         ctx.fillStyle = s.color;
@@ -657,58 +677,50 @@ const Renderer = {
   _drawScoreboard(ctx, game, w) {
     const cx = w / 2;
     const compact = w < 900 || Input.usingTouch;
-    const panelW = compact ? 210 : 300, panelH = compact ? 46 : 62;
-    ctx.fillStyle = 'rgba(9,11,16,.78)';
-    this._roundRect(ctx, cx - panelW / 2, 12, panelW, panelH, 14);
+    const panelW = compact ? 232 : 320, panelH = compact ? 48 : 62;
+    ctx.fillStyle = 'rgba(24,14,10,.82)';
+    this._roundRect(ctx, cx - panelW / 2, 10, panelW, panelH, 14);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.09)';
+    ctx.strokeStyle = 'rgba(255,255,255,.10)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
+    const scores = game.mode.score ? game.mode.score(game) : ['0', '0'];
     ctx.textAlign = 'center';
-    const off = compact ? 62 : 88;
+    const off = compact ? 70 : 92;
     for (let team = 0; team < 2; team++) {
       const x = cx + (team === 0 ? -off : off);
       ctx.fillStyle = TEAM_COLOR[team];
-      ctx.font = `bold ${compact ? 24 : 30}px system-ui, sans-serif`;
-      ctx.fillText(String(game.teamGems[team]), x, compact ? 30 : 38);
-      if (!compact) {
-        ctx.fillStyle = 'rgba(255,255,255,.45)';
-        ctx.font = '11px system-ui, sans-serif';
-        ctx.fillText(team === game.playerTeam ? 'YOUR TEAM' : 'ENEMY', x, 60);
-      }
-      const pipW = compact ? 6 : 7, gap = compact ? 8 : 10;
-      for (let i = 0; i < GEMS_TO_WIN; i++) {
-        const px = x - (gap * GEMS_TO_WIN) / 2 + i * gap;
-        ctx.fillStyle = i < game.teamGems[team] ? TEAM_COLOR[team] : 'rgba(255,255,255,.14)';
-        ctx.fillRect(px, compact ? 38 : 20, pipW, 3);
-      }
+      ctx.font = `bold ${compact ? 23 : 29}px system-ui, sans-serif`;
+      ctx.fillText(scores[team], x, compact ? 30 : 34);
+      ctx.fillStyle = 'rgba(255,255,255,.4)';
+      ctx.font = `${compact ? 9 : 11}px system-ui, sans-serif`;
+      ctx.fillText(team === game.playerTeam ? 'YOU' : 'THEM', x, compact ? 44 : 54);
     }
 
-    ctx.save();
-    ctx.translate(cx, compact ? 26 : 34);
-    ctx.scale(compact ? 0.7 : 0.9, compact ? 0.7 : 0.9);
-    this._gemShape(ctx, 12);
-    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.font = `bold ${compact ? 9 : 10}px system-ui, sans-serif`;
+    ctx.fillText(game.mode.name.toUpperCase(), cx, compact ? 22 : 24);
 
     const mins = Math.floor(game.timeLeft / 60);
     const secs = Math.floor(game.timeLeft % 60);
-    ctx.fillStyle = game.timeLeft < 30 ? '#fca5a5' : 'rgba(255,255,255,.8)';
-    ctx.font = `bold ${compact ? 13 : 14}px system-ui, sans-serif`;
-    ctx.fillText(`${mins}:${secs.toString().padStart(2, '0')}`, cx, compact ? 44 : 62);
+    ctx.fillStyle = game.timeLeft < 30 ? '#fca5a5' : '#fff';
+    ctx.font = `bold ${compact ? 16 : 19}px system-ui, sans-serif`;
+    ctx.fillText(`${mins}:${secs.toString().padStart(2, '0')}`, cx, compact ? 40 : 48);
 
-    if (game.lockTeam !== -1) {
-      const t = Math.ceil(game.lockTimer);
-      ctx.fillStyle = TEAM_COLOR[game.lockTeam];
-      ctx.font = 'bold 52px system-ui, sans-serif';
-      ctx.strokeStyle = 'rgba(0,0,0,.7)';
+    const banner = game.mode.banner ? game.mode.banner(game) : null;
+    if (banner) {
+      ctx.fillStyle = banner.color;
+      ctx.font = `bold ${compact ? 40 : 52}px system-ui, sans-serif`;
+      ctx.strokeStyle = 'rgba(0,0,0,.75)';
       ctx.lineWidth = 5;
-      ctx.strokeText(String(t), cx, 118);
-      ctx.fillText(String(t), cx, 118);
-      ctx.font = 'bold 13px system-ui, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,.8)';
-      const label = game.lockTeam === game.playerTeam ? 'HOLD THE GEMS!' : 'BREAK THEIR HOLD!';
-      ctx.fillText(label, cx, 148);
+      ctx.strokeText(banner.text, cx, panelH + (compact ? 46 : 58));
+      ctx.fillText(banner.text, cx, panelH + (compact ? 46 : 58));
+      if (banner.sub) {
+        ctx.font = 'bold 13px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        ctx.fillText(banner.sub, cx, panelH + (compact ? 74 : 88));
+      }
     }
   },
 
@@ -731,9 +743,9 @@ const Renderer = {
     ctx.lineWidth = 3;
     ctx.stroke();
     ctx.textAlign = 'center';
-    ctx.font = '20px system-ui, "Segoe UI Emoji", sans-serif';
-    ctx.fillStyle = '#000';
-    ctx.fillText(p.def.icon, x + 34, y + 43);
+    ctx.font = 'bold 19px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(0,0,0,.65)';
+    ctx.fillText(p.def.name[0], x + 34, y + 44);
 
     // Health.
     ctx.textAlign = 'left';
@@ -839,7 +851,7 @@ const Renderer = {
       progress: p ? p.chargePct : 0,
       ready: p ? p.superReady : false,
       ring: '#facc15',
-      face: p ? p.def.icon : '💥',
+      glyph: 'star',
       label: 'SUPER',
       flash: Input.superFlash,
     });
@@ -849,7 +861,7 @@ const Renderer = {
         progress: p.hyperActive > 0 ? p.hyperActive / HYPER.duration : p.hyperPct,
         ready: p.hyperReady,
         ring: '#fb923c',
-        face: '⚡',
+        glyph: 'bolt',
         label: 'HYPER',
         flash: Input.hyperFlash,
         small: true,
@@ -920,11 +932,27 @@ const Renderer = {
       ctx.lineCap = 'butt';
     }
 
-    ctx.globalAlpha = o.ready ? 1 : 0.45;
-    ctx.font = `${Math.round(r * (o.small ? 0.8 : 0.95))}px system-ui, "Segoe UI Emoji", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(o.face, x, y + 1);
+    ctx.globalAlpha = o.ready ? 1 : 0.4;
+    ctx.fillStyle = o.ready ? '#fff' : '#cbd5e1';
+    const gs = r * 0.5;
+    ctx.beginPath();
+    if (o.glyph === 'bolt') {
+      ctx.moveTo(x + gs * 0.25, y - gs);
+      ctx.lineTo(x - gs * 0.55, y + gs * 0.15);
+      ctx.lineTo(x - gs * 0.05, y + gs * 0.15);
+      ctx.lineTo(x - gs * 0.25, y + gs);
+      ctx.lineTo(x + gs * 0.6, y - gs * 0.2);
+      ctx.lineTo(x + gs * 0.05, y - gs * 0.2);
+    } else {
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i / 10) * Math.PI * 2;
+        const rr = i % 2 ? gs * 0.45 : gs;
+        const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+    }
+    ctx.closePath();
+    ctx.fill();
     ctx.globalAlpha = 1;
 
     if (o.flash > 0) {

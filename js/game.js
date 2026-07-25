@@ -1,10 +1,11 @@
-/* Match state, the simulation loop and the glue to the menu screens. */
+/* Match state and the simulation loop. */
 
 const Game = {
   state: 'menu',            // menu | playing | over
   difficulty: 'normal',
   playerTeam: TEAM_BLUE,
   player: null,
+  mode: MODES.gem,
 
   brawlers: [],
   projectiles: [],
@@ -22,30 +23,40 @@ const Game = {
   texts: [],
   feed: [],
 
-  teamGems: [0, 0],
+  teamScore: [0, 0],
+  safes: [],
+  goals: [],
+  ball: null,
   lockTeam: -1,
   lockTimer: 0,
   gemTimer: 0,
+  noRespawn: false,
+  roundBreak: 0,
+  goalBreak: 0,
   time: 0,
-  timeLeft: MATCH_SECONDS,
+  timeLeft: 180,
   paused: false,
   result: null,
   tickParity: 0,
   _last: 0,
 
-  start(brawlerId, difficulty) {
+  start(brawlerId, modeId, difficulty) {
     this.difficulty = difficulty || 'normal';
+    this.mode = MODES[modeId] || MODES.gem;
     for (const key of ['brawlers', 'projectiles', 'lobs', 'beams', 'summons', 'gems',
       'areas', 'telegraphs', 'tempWalls', 'swings', 'links', 'particles', 'pulses',
-      'texts', 'feed']) {
+      'texts', 'feed', 'safes', 'goals']) {
       this[key] = [];
     }
-    this.teamGems = [0, 0];
+    this.teamScore = [0, 0];
+    this.ball = null;
     this.lockTeam = -1;
     this.lockTimer = 0;
-    this.gemTimer = 1.2;
+    this.noRespawn = false;
+    this.roundBreak = 0;
+    this.goalBreak = 0;
     this.time = 0;
-    this.timeLeft = MATCH_SECONDS;
+    this.timeLeft = this.mode.time;
     this.paused = false;
     this.result = null;
     this.tickParity = 0;
@@ -80,6 +91,8 @@ const Game = {
       const s = GameMap.spawns[b.team][slot[b.team]++ % 3];
       b.spawnAt(s.x, s.y);
     }
+
+    if (this.mode.init) this.mode.init(this);
 
     Renderer.camX = this.player.x;
     Renderer.camY = this.player.y;
@@ -133,7 +146,7 @@ const Game = {
     this.beams = this.beams.filter((b) => !b.dead);
 
     for (const s of this.summons) s.update(dt, this);
-    this.summons = this.summons.filter((s) => !s.dead);
+    this.summons = this.summons.filter((s) => !s.dead || s.isSafe);
 
     for (const g of this.gems) g.update(dt);
     this.gems = this.gems.filter((g) => !g.dead);
@@ -141,8 +154,7 @@ const Game = {
     this._updateAreas(dt);
     this._updateTelegraphs(dt);
     this._updateTempWalls(dt);
-    this._updateGemSpawner(dt);
-    this._updateScore(dt);
+    if (this.mode.update) this.mode.update(this, dt);
     this._updateEffects(dt);
   },
 
@@ -212,8 +224,7 @@ const Game = {
           if (!b.alive || b.team === a.team) continue;
           const d = dist(b.x, b.y, a.x, a.y);
           if (d > a.radius || d < 1) continue;
-          b.pushX += ((a.x - b.x) / d) * a.pull;
-          b.pushY += ((a.y - b.y) / d) * a.pull;
+          b.push(((a.x - b.x) / d) * a.pull * dt * 4, ((a.y - b.y) / d) * a.pull * dt * 4);
         }
       }
       if (a.tick <= 0) {
@@ -263,50 +274,6 @@ const Game = {
       }
     }
     this.tempWalls = this.tempWalls.filter((w) => !w.done);
-  },
-
-  _updateGemSpawner(dt) {
-    this.gemTimer -= dt;
-    if (this.gemTimer <= 0) {
-      this.gemTimer += GEM_SPAWN_EVERY;
-      if (this.gems.length < MAX_LOOSE_GEMS) {
-        const a = rand(0, Math.PI * 2);
-        const g = new Gem(GameMap.centerX(), GameMap.centerY(), Math.cos(a) * 120, Math.sin(a) * 120);
-        this.gems.push(g);
-        this.burst(g.x, g.y, PALETTE.gem, 8);
-      }
-    }
-  },
-
-  _updateScore(dt) {
-    this.teamGems = [0, 0];
-    for (const b of this.brawlers) this.teamGems[b.team] += b.gems;
-
-    const [blue, red] = this.teamGems;
-    let leader = -1;
-    if (blue >= GEMS_TO_WIN || red >= GEMS_TO_WIN) {
-      if (blue > red && blue >= GEMS_TO_WIN) leader = 0;
-      else if (red > blue && red >= GEMS_TO_WIN) leader = 1;
-    }
-
-    if (leader === -1) {
-      this.lockTeam = -1;
-    } else {
-      if (this.lockTeam !== leader) {
-        this.lockTeam = leader;
-        this.lockTimer = LOCK_SECONDS;
-      }
-      const before = Math.ceil(this.lockTimer);
-      this.lockTimer -= dt;
-      if (Math.ceil(this.lockTimer) !== before && this.lockTimer > 0) Sfx.play('tick');
-      if (this.lockTimer <= 0) { this.finish(leader); return; }
-    }
-
-    if (this.timeLeft <= 0) {
-      const winner = this.teamGems[0] === this.teamGems[1] ? -1
-        : (this.teamGems[0] > this.teamGems[1] ? 0 : 1);
-      this.finish(winner);
-    }
   },
 
   _updateEffects(dt) {
@@ -427,9 +394,12 @@ const Game = {
     const victim = target === this.player ? 'You' : target.name;
     this.log(`${killer} defeated ${victim}`,
       source && source.team === this.playerTeam ? TEAM_COLOR[this.playerTeam] : '#fca5a5');
+
+    if (this.mode.onKill) this.mode.onKill(this, target, source);
   },
 
   respawn(b) {
+    if (this.noRespawn) { b.respawnTimer = 999; return; }
     const spawns = GameMap.spawns[b.team];
     let best = spawns[0], bestScore = -Infinity;
     for (const s of spawns) {
@@ -445,6 +415,7 @@ const Game = {
   },
 
   pickUpGems(b) {
+    if (this.mode.id !== 'gem') return;
     for (const g of this.gems) {
       if (g.dead || g.delay > 0) continue;
       if (dist2(b.x, b.y, g.x, g.y) < (b.radius + g.radius + 4) ** 2) {
@@ -499,6 +470,7 @@ const Game = {
   shake(mag) { Renderer.shake(mag); },
 
   finish(winner) {
+    if (this.state !== 'playing') return;
     this.state = 'over';
     this.result = winner;
     Sfx.play(winner === this.playerTeam ? 'win' : 'lose');

@@ -368,13 +368,11 @@ const Abilities = {
     if (!target.alive) return;
 
     if (spec.knockback) {
-      target.pushX += Math.cos(angle) * spec.knockback;
-      target.pushY += Math.sin(angle) * spec.knockback;
+      target.push(Math.cos(angle) * spec.knockback, Math.sin(angle) * spec.knockback);
     }
     if (spec.pullToOwner && owner.alive) {
       const a = Math.atan2(owner.y - target.y, owner.x - target.x);
-      target.pushX += Math.cos(a) * (spec.pullStrength || 420);
-      target.pushY += Math.sin(a) * (spec.pullStrength || 420);
+      target.push(Math.cos(a) * (spec.pullStrength || 420), Math.sin(a) * (spec.pullStrength || 420));
     }
     if (spec.stun) target.stunUntil = Math.max(target.stunUntil, spec.stun);
     if (spec.slow) {

@@ -38,6 +38,7 @@ class Brawler {
     this.spawnGuard = 0;
     this.kills = 0;
     this.deaths = 0;
+    this.stars = 0;          // Bounty
 
     /* Hypercharge: fills only once the Super is already available. */
     this.hyperCharge = 0;
@@ -104,7 +105,6 @@ class Brawler {
     this.reloadTimer = 0;
     this.attackCd = 0;
     this.vx = this.vy = 0;
-    this.pushX = this.pushY = 0;
     this.spawnGuard = 1.2;
     this.dash = null;
     this.leap = null;
@@ -154,16 +154,14 @@ class Brawler {
     else if (this.leap) this._updateLeap(dt, game);
     else this._updateMove(dt, game);
 
-    const decay = Math.pow(0.0008, dt);
-    this.pushX *= decay;
-    this.pushY *= decay;
-    if (Math.abs(this.pushX) < 2) this.pushX = 0;
-    if (Math.abs(this.pushY) < 2) this.pushY = 0;
-
     if (!this.stunned && !this.dash && !this.leap) {
       if (this.input.hyper && this.hyperReady && this.superReady) this.activateHyper(game);
       if (this.input.super && this.superReady) this.useSuper(game);
-      else if (this.input.fire && this.attackCd <= 0 && this.ammo > 0) this.fire(game);
+      else if (this.input.fire && this.attackCd <= 0 && this.ammo > 0) {
+        // Carrying the ball replaces the attack with a kick.
+        if (game.mode.interceptFire && game.mode.interceptFire(game, this)) this.attackCd = 0.35;
+        else this.fire(game);
+      }
     }
 
     game.pickUpGems(this);
@@ -191,17 +189,57 @@ class Brawler {
     }
   }
 
+  /*
+   * Counter-Strike movement. Friction bleeds the whole velocity every frame;
+   * accelerate() then tops it back up, but only along the direction asked for
+   * and only up to the cap. Net effect: you ramp up over a few frames, carry
+   * momentum through turns, and a knockback keeps sliding instead of being
+   * cancelled the instant you hold a key.
+   */
+  _friction(dt, scale) {
+    const sp = Math.hypot(this.vx, this.vy);
+    if (sp < 1) { this.vx = this.vy = 0; return; }
+    const control = Math.max(sp, MOVE.stopSpeed);
+    const drop = control * MOVE.friction * (scale == null ? 1 : scale) * dt;
+    const mult = Math.max(sp - drop, 0) / sp;
+    this.vx *= mult;
+    this.vy *= mult;
+  }
+
+  _accelerate(dt, wx, wy, wishSpeed, accel) {
+    const current = this.vx * wx + this.vy * wy;
+    const add = wishSpeed - current;
+    if (add <= 0) return;                       // already at speed this way
+    const a = Math.min(accel * wishSpeed * dt, add);
+    this.vx += wx * a;
+    this.vy += wy * a;
+  }
+
+  get moveSpeed() { return Math.hypot(this.vx, this.vy); }
+
   _updateMove(dt, game) {
     const inp = this.input;
-    let mx = inp.mx, my = inp.my;
-    const len = Math.hypot(mx, my);
-    if (len > 1) { mx /= len; my /= len; }
-    if (this.stunned || this.rooted > 0) { mx = my = 0; }
-    const sp = this.speed;
-    this.vx = mx * sp;
-    this.vy = my * sp;
-    moveAndCollide(this, (this.vx + this.pushX) * dt, (this.vy + this.pushY) * dt);
+    let wx = inp.mx, wy = inp.my;
+    const len = Math.hypot(wx, wy);
+    if (len > 0.0001) { wx /= len; wy /= len; }
+    const held = len > 0.05 && !this.stunned && this.rooted <= 0;
+
+    this._friction(dt);
+    if (held) this._accelerate(dt, wx, wy, this.speed, MOVE.accel);
+
+    this.hitWallX = this.hitWallY = false;
+    moveAndCollide(this, this.vx * dt, this.vy * dt);
+    // Running into a wall kills that component instead of banking against it.
+    if (this.hitWallX) this.vx = 0;
+    if (this.hitWallY) this.vy = 0;
+
     this.angle = inp.aim;
+  }
+
+  /* Knockback and pulls are impulses straight into velocity; friction eats them. */
+  push(ax, ay) {
+    this.vx += ax;
+    this.vy += ay;
   }
 
   _updateDash(dt, game) {
@@ -659,6 +697,8 @@ class Summon {
       const d = dist2(this.x, this.y, b.x, b.y);
       if (d < bestD && GameMap.lineOfSight(this.x, this.y, b.x, b.y)) { bestD = d; target = b; }
     }
+
+    if (this.kind === 'safe') return;
 
     if (this.kind === 'mine') {
       if (this.armed <= 0 && target && bestD < (this.spec.trigger || 60) ** 2) {

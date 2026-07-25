@@ -1,8 +1,8 @@
 /* Global configuration, tuning values and shared helpers. */
 
 const TILE = 48;
-const MAP_W = 29;           // odd, so there is a true centre tile
-const MAP_H = 21;
+const MAP_W = 27;
+const MAP_H = 19;
 const WORLD_W = MAP_W * TILE;
 const WORLD_H = MAP_H * TILE;
 
@@ -10,62 +10,52 @@ const TEAM_BLUE = 0;
 const TEAM_RED = 1;
 
 const TEAM_COLOR = ['#38bdf8', '#fb7185'];
-const TEAM_DARK = ['#0c4a6e', '#7f1d34'];
 const TEAM_NAME = ['Blue', 'Red'];
 
-/* Match rules (Gem Grab). */
-const GEMS_TO_WIN = 10;
-const LOCK_SECONDS = 15;     // countdown once a team holds enough gems
-const MATCH_SECONDS = 180;
-const GEM_SPAWN_EVERY = 2.6;
-const MAX_LOOSE_GEMS = 12;
-const RESPAWN_SECONDS = 3.2;
-
-/* Visibility */
-const BUSH_REVEAL_DIST = 96;  // you can see hidden enemies this close
-const ATTACK_REVEAL = 1.1;    // seconds you stay revealed after attacking
+const RESPAWN_SECONDS = 3.0;
+const BUSH_REVEAL_DIST = 96;
+const ATTACK_REVEAL = 1.1;
 
 /*
- * Hypercharge. Every Hypercharge grants the same stat package while active and
- * upgrades that brawler's Super; only the Super upgrade differs per brawler.
- * The meter fills from damage dealt once the Super itself is already charged.
+ * Movement, Counter-Strike style: input picks a direction, not a velocity.
+ * Friction bleeds speed off every frame and accelerate() only tops you up to
+ * the cap along the direction you asked for, so you ramp up, carry momentum
+ * round corners, and keep sliding when knocked back.
  */
+const MOVE = {
+  accel: 11,        // how hard you claw up to full speed
+  friction: 8.5,    // how fast you shed it when you let go
+  stopSpeed: 60,    // floor so you actually come to rest
+  airAccel: 3.2,    // steering authority while dashing or knocked back
+};
+
 const HYPER = {
   duration: 6,
   speedMult: 1.20,
-  damageMult: 1.05,
-  shieldMult: 0.95,          // incoming damage multiplier
-  chargeMult: 1.4,           // hyper meter gain relative to super charge gain
+  damageMult: 1.10,
+  shieldMult: 0.92,
+  chargeMult: 1.4,
 };
 
 const STATUS_TICK = 0.25;
 
-/* Warm desert arena: sand floor, terracotta rock, chunky green scrub. */
+/* Warm desert arena. */
 const PALETTE = {
-  bg: '#6f4230',
-  floor: '#e09a6f',
-  floorAlt: '#da9065',
-  grid: 'rgba(120,60,30,.07)',
+  bg: '#5d3626',
+  floor: '#e2a074',
+  floorAlt: '#dc9668',
+  floorSpeck: 'rgba(120,64,34,.10)',
   rock: '#b0573a',
-  rockTop: '#cd7150',
-  rockSide: '#8d4029',
-  crate: '#b3814a',
-  crateTop: '#d39c5f',
-  bush: '#3f9a37',
-  bushTop: '#5fc44d',
+  rockTop: '#d07a56',
+  rockSide: '#89401f',
+  crate: '#a9773f',
+  crateTop: '#cb9758',
+  bush: '#39913a',
+  bushTop: '#5cbf4d',
+  bushDark: '#256b28',
   gem: '#a855f7',
   accent: '#22d3ee',
-  hud: 'rgba(24,16,12,.72)',
-};
-
-const RARITY = {
-  starting: { name: 'Starting', color: '#9aa0ad' },
-  rare: { name: 'Rare', color: '#34d399' },
-  superrare: { name: 'Super Rare', color: '#38bdf8' },
-  epic: { name: 'Epic', color: '#c084fc' },
-  mythic: { name: 'Mythic', color: '#fb7185' },
-  legendary: { name: 'Legendary', color: '#facc15' },
-  ultra: { name: 'Ultra Legendary', color: '#f472b6' },
+  ink: '#3b1f14',
 };
 
 const CLASSES = {
@@ -73,9 +63,8 @@ const CLASSES = {
   tank: 'Tank',
   marksman: 'Marksman',
   artillery: 'Artillery',
-  controller: 'Controller',
-  assassin: 'Assassin',
   support: 'Support',
+  assassin: 'Assassin',
 };
 
 const BOT_NAMES = [
