@@ -51,6 +51,7 @@ const UI = {
   },
 
   show(which) {
+    Backdrop.start();
     for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.toggle('hidden', id !== which);
     }
@@ -370,6 +371,7 @@ const UI = {
   },
 
   startMatch() {
+    Backdrop.stop();
     for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.add('hidden');
     }
@@ -870,6 +872,7 @@ window.addEventListener('load', () => {
   const canvas = document.getElementById('game');
   Renderer.init(canvas);
   Input.init(canvas);
+  Backdrop.init();
   StarrDrop.init();
   UI.init();
   Game._last = performance.now();

@@ -14,6 +14,7 @@
 </head>
 <body>
 
+<canvas id="backdrop"></canvas>
 <canvas id="game"></canvas>
 
 <!-- Home -->
@@ -53,7 +54,11 @@
   <!-- centre stage -->
   <div class="stage">
     <h1 class="logo"><span>SCRAP</span><em>STARS</em></h1>
-    <canvas id="home-portrait" class="hero" width="360" height="360"></canvas>
+    <div class="herowrap">
+      <i class="spot"></i>
+      <canvas id="home-portrait" class="hero" width="360" height="360"></canvas>
+      <i class="podium"></i>
+    </div>
     <div id="home-brawler-name" class="heroname">Buckshot</div>
     <div id="home-brawler-class" class="heroclass">Damage Dealer</div>
   </div>
@@ -98,7 +103,7 @@
 
   <p class="keys">
     <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Mouse</kbd> aim ·
-    <kbd>Click</kbd> shoot · <kbd>Space</kbd> Super · <kbd>Q</kbd> Hyper
+    <kbd>Click</kbd> shoot · <kbd>Space</kbd> Super · <kbd>Q</kbd> Overdrive · <kbd>1</kbd>–<kbd>4</kbd> chat
   </p>
 </div>
 
@@ -304,6 +309,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/backdrop.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/map.js"></script>
 <script src="js/ranks.js"></script>

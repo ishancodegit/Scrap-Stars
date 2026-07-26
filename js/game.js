@@ -43,8 +43,10 @@ const Game = {
   result: null,
   tickParity: 0,
   countdown: 0,
-  stopTimer: 0,
+  introT: 0,               // team lineup card, before the countdown
+  outro: null,             // slow-motion beat after the final blow
   callout: null,
+  stopTimer: 0,
   _last: 0,
 
   start(brawlerId, modeId, difficulty, opts) {
@@ -118,8 +120,10 @@ const Game = {
     Renderer.camX = this.player.x;
     Renderer.camY = this.player.y;
     this.state = 'playing';
+    this.introT = INTRO_SECONDS;
     this.countdown = 3.2;
     this.stopTimer = 0;
+    this.outro = null;
     this.callout = null;
     Sfx.resume();
     if (typeof Net !== 'undefined' && Net.isHost && Net.connected) Net._sendInit();
@@ -180,8 +184,10 @@ const Game = {
     Renderer.camX = this.player.x;
     Renderer.camY = this.player.y;
     this.state = 'playing';
+    this.introT = INTRO_SECONDS;
     this.countdown = 3.2;
     this.stopTimer = 0;
+    this.outro = null;
     this.callout = null;
     Sfx.resume();
   },
@@ -192,14 +198,27 @@ const Game = {
     let dt = Math.min((now - this._last) / 1000 || 0, 0.05);
     this._last = now;
 
-    // The opening countdown and hit-stop both hold the simulation while the
-    // presentation keeps running, so the screen never looks frozen.
-    if (this.countdown > 0) {
+    // The lineup card, the countdown and hit-stop all hold the simulation while
+    // the presentation keeps running, so the screen never looks frozen.
+    if (this.introT > 0) {
+      this.introT -= dt;
+      if (this.introT <= 0) Sfx.play('charged');
+      dt = 0;
+    } else if (this.countdown > 0) {
       const was = Math.ceil(this.countdown - 0.2);
       this.countdown -= dt;
       const now2 = Math.ceil(this.countdown - 0.2);
       if (now2 !== was) Sfx.play(now2 <= 0 ? 'go' : 'countdown');
       dt = 0;
+    } else if (this.outro) {
+      // Ride the last moment out in slow motion rather than cutting away.
+      this.outro.t += dt;
+      dt *= OUTRO_SLOWMO;
+      if (this.outro.t >= OUTRO_SECONDS && !this.outro.shown) {
+        this.outro.shown = true;
+        this.state = 'over';                 // stop simulating behind the sheet
+        UI.showResult(this.outro.winner);
+      }
     } else if (this.stopTimer > 0) {
       this.stopTimer -= dt;
       dt = 0;
@@ -711,9 +730,15 @@ const Game = {
   shake(mag) { Renderer.shake(mag); },
 
   finish(winner) {
-    if (this.state !== 'playing') return;
-    this.state = 'over';
+    // The outro deliberately stays in 'playing' so the world keeps drawing, so
+    // the guard has to be the outro itself — a mode that keeps scoring during
+    // it would otherwise restart the ending on every frame.
+    if (this.state !== 'playing' || this.outro) return;
     this.result = winner;
+    // Stay in 'playing' so the world keeps drawing under the stamp; the outro
+    // is what eventually hands over to the result screen.
+    this.outro = { t: 0, winner, shown: false };
+    Renderer.shake(14);
     if (typeof Net !== 'undefined' && Net.isHost && Net.connected) Net.send({ t: 'end', w: winner });
     this.rankResult = this.ranked
       ? Ranked.settle(winner === this.playerTeam, winner === -1)
@@ -726,6 +751,5 @@ const Game = {
       Quests.recordMatch(this, winner === this.playerTeam, best === this.player);
     }
     Sfx.play(winner === this.playerTeam ? 'win' : 'lose');
-    UI.showResult(winner);
   },
 };

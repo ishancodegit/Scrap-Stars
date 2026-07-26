@@ -64,6 +64,17 @@ html, body {
 
 /* ---------- overlays ---------- */
 
+/* The canyon behind every menu, painted in backdrop.js. */
+#backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+  pointer-events: none;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -72,11 +83,12 @@ html, body {
   place-items: center;
   padding: 20px;
   overflow-y: auto;
-  background:
-    repeating-linear-gradient(114deg, rgba(255, 255, 255, .04) 0 30px, rgba(255, 255, 255, 0) 30px 60px),
-    radial-gradient(900px 520px at 50% 4%, #8348d8 0%, rgba(36, 21, 70, 0) 68%),
-    radial-gradient(1300px 760px at 50% 122%, #120a24 0%, rgba(36, 21, 70, 0) 62%),
-    linear-gradient(180deg, var(--bg-2), var(--bg) 52%, var(--ink));
+  /* Barely a wash — the scene is the point, so let it through. */
+  background: rgba(24, 11, 40, .10);
+}
+/* Screens that are mostly reading get a heavier scrim so text stays crisp. */
+#brawlers, #modes, #road, #skins, #quests, #settings, #friends, #result {
+  background: rgba(20, 9, 34, .62);
 }
 .overlay.soft { background: rgba(15, 8, 26, .86); }
 .hidden { display: none !important; }
@@ -731,3 +743,42 @@ th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4) { text-align:
 .segbtn.on span { color: #6b4400; }
 .segbtn:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
 @media (max-width: 620px) { .segrow { grid-auto-flow: row; } }
+
+/* ---------- home screen atmosphere ---------- */
+
+/* Everything on the home screen sits above the painted scene. */
+.home-screen > * { position: relative; z-index: 1; }
+
+.herowrap { position: relative; display: grid; place-items: center; }
+/* The lighting is scenery, so it must sit behind the fighter — the podium
+   comes after the canvas in the DOM and would otherwise wash over their legs. */
+.herowrap .hero { position: relative; z-index: 1; }
+.herowrap .spot, .herowrap .podium { z-index: 0; }
+
+/* A shaft of light behind the fighter so they are lit rather than pasted on. */
+.spot {
+  position: absolute;
+  width: min(420px, 52vh); height: min(420px, 52vh);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,222,150,.28) 0%, rgba(190,140,255,.14) 42%, rgba(0,0,0,0) 70%);
+  animation: breathe 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: .85; }
+  50%      { transform: scale(1.07); opacity: 1; }
+}
+
+/* And something to stand on. */
+.podium {
+  position: absolute; bottom: 4%;
+  width: min(230px, 30vh); height: min(52px, 7vh);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255,222,150,.34) 0%, rgba(120,70,190,.22) 55%, rgba(0,0,0,0) 72%);
+  box-shadow: 0 0 44px 12px rgba(160,110,255,.18);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot { animation: none; }
+}

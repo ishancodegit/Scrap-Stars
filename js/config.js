@@ -97,6 +97,11 @@ const EMOTES = [
   { key: '4', icon: '\u2691', label: 'Attack', color: '#fb7185' },
 ];
 
+/* Match bookends. */
+const INTRO_SECONDS = 2.3;      // team lineup card before the countdown
+const OUTRO_SECONDS = 2.6;      // slow-motion beat before the result screen
+const OUTRO_SLOWMO = 0.18;      // how far time is dilated during it
+
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 const dist2 = (ax, ay, bx, by) => {

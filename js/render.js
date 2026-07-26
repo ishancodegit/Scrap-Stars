@@ -784,6 +784,8 @@ const Renderer = {
     this._drawIntro(ctx, game, w, h);
     this._drawCallout(ctx, game, w, h);
     this._drawCountdown(ctx, game, w, h);
+    this._drawLineup(ctx, game, w, h);
+    this._drawOutro(ctx, game, w, h);
     this._drawNetBadge(ctx, w, h);
   },
 
@@ -835,6 +837,164 @@ const Renderer = {
     ctx.restore();
   },
 
+  /*
+   * The lineup: your three slide in from the left, theirs from the right, and
+   * they meet at a VS. It costs two seconds and it is the difference between a
+   * match starting and a match being announced.
+   */
+  _drawLineup(ctx, game, w, h) {
+    if (game.introT <= 0) return;
+    const t = 1 - game.introT / INTRO_SECONDS;      // 0 → 1 across the card
+    const ease = 1 - Math.pow(1 - clamp(t / 0.45, 0, 1), 3);
+    const out = clamp((t - 0.85) / 0.15, 0, 1);     // fades away at the end
+
+    ctx.save();
+    ctx.globalAlpha = 1 - out;
+    ctx.fillStyle = 'rgba(9,5,18,.86)';
+    ctx.fillRect(0, 0, w, h);
+
+    const mine = game.brawlers.filter((b) => b.team === game.playerTeam);
+    const theirs = game.brawlers.filter((b) => b.team !== game.playerTeam);
+    const S = Math.min(w, h);
+    const cardY = h * 0.5;
+    // Sized off the disc so the row can never collide with itself or the VS,
+    // whatever the viewport does.
+    const disc = Math.min(S * 0.082, w * 0.062);
+    const step = disc * 2.25;
+    const gap = Math.max(S * 0.13, disc * 1.5);     // clearance for the VS
+    const slide = (1 - ease) * w * 0.6;
+
+    const row = (list, side) => {
+      list.forEach((b, i) => {
+        const baseX = w / 2 + side * (gap + disc + i * step);
+        ctx.save();
+        ctx.translate(baseX + side * slide, cardY);
+        ctx.globalAlpha = (1 - out) * ease;
+        // Team-tinted disc behind each fighter so the sides read instantly.
+        ctx.beginPath();
+        ctx.arc(0, 0, disc, 0, Math.PI * 2);
+        ctx.fillStyle = side < 0 ? 'rgba(56,132,255,.20)' : 'rgba(255,80,110,.20)';
+        ctx.fill();
+        ctx.strokeStyle = side < 0 ? '#4b9bff' : '#ff5b78';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        const sc = disc * 0.042;
+        ctx.save();
+        ctx.scale(sc, sc);
+        Sprites.drawBrawler(ctx, { def: b.def, radius: 22, angle: side < 0 ? 0 : Math.PI,
+                                   vx: 0, vy: 0, id: b.id, x: 0, y: 0 }, 0.6);
+        ctx.restore();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `900 ${Math.round(S * 0.026)}px ui-rounded, system-ui, sans-serif`;
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#12071f';
+        ctx.lineWidth = 5;
+        const label = b === game.player ? 'YOU' : b.name;
+        ctx.strokeText(label, 0, disc * 1.42);
+        ctx.fillStyle = b === game.player ? '#ffc738' : '#fff';
+        ctx.fillText(label, 0, disc * 1.42);
+        ctx.restore();
+      });
+    };
+    row(mine, -1);
+    row(theirs, 1);
+
+    // VS, landing on the beat the rows arrive.
+    const pop = clamp((t - 0.3) / 0.22, 0, 1);
+    if (pop > 0) {
+      ctx.save();
+      ctx.translate(w / 2, cardY);
+      ctx.scale(1.6 - pop * 0.6, 1.6 - pop * 0.6);
+      ctx.globalAlpha = (1 - out) * pop;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.font = `900 ${Math.round(S * 0.13)}px ui-rounded, system-ui, sans-serif`;
+      ctx.strokeStyle = '#12071f';
+      ctx.lineWidth = 14;
+      ctx.strokeText('VS', 0, 0);
+      const g = ctx.createLinearGradient(0, -S * 0.07, 0, S * 0.07);
+      g.addColorStop(0, '#fff6d5');
+      g.addColorStop(1, '#ffb020');
+      ctx.fillStyle = g;
+      ctx.fillText('VS', 0, 0);
+      ctx.restore();
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = (1 - out) * ease;
+    ctx.font = `900 ${Math.round(S * 0.034)}px ui-rounded, system-ui, sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(game.mode.name.toUpperCase(), w / 2, h * 0.2);
+    ctx.font = `900 ${Math.round(S * 0.022)}px ui-rounded, system-ui, sans-serif`;
+    ctx.fillStyle = PALETTE.accent;
+    ctx.fillText((game.mapDef ? game.mapDef.name : '').toUpperCase(), w / 2, h * 0.2 + S * 0.045);
+    ctx.restore();
+  },
+
+  /*
+   * The ending: the world keeps playing underneath in slow motion while the
+   * verdict stamps down over it and a ring blows out from the letters.
+   */
+  _drawOutro(ctx, game, w, h) {
+    const o = game.outro;
+    if (!o) return;
+    const t = o.t / OUTRO_SECONDS;
+    const won = o.winner === game.playerTeam;
+    const draw = o.winner === -1;
+    const text = draw ? 'DRAW' : won ? 'VICTORY' : 'DEFEAT';
+    const tint = draw ? '#ffc738' : won ? '#4ade80' : '#fb7185';
+    const S = Math.min(w, h);
+
+    ctx.save();
+    // Darken progressively so the eye is pulled off the arena and onto the word.
+    ctx.globalAlpha = clamp(t * 1.6, 0, 0.72);
+    ctx.fillStyle = '#08040f';
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    // The stamp drops in and overshoots.
+    const p = clamp(o.t / 0.42, 0, 1);
+    const ease = 1 + 2.4 * Math.pow(p - 1, 3) + 1.4 * Math.pow(p - 1, 2);
+    const scale = 2.6 - ease * 1.6;
+
+    // Shockwave from the moment it lands.
+    if (p >= 1) {
+      const rt = clamp((o.t - 0.42) / 0.55, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = (1 - rt) * 0.55;
+      ctx.strokeStyle = tint;
+      ctx.lineWidth = 10 * (1 - rt) + 2;
+      ctx.beginPath();
+      ctx.arc(w / 2, h / 2, S * 0.1 + rt * S * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(scale, scale);
+    ctx.globalAlpha = clamp(p * 2, 0, 1);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.font = `900 ${Math.round(S * 0.15)}px ui-rounded, system-ui, sans-serif`;
+    ctx.strokeStyle = '#12071f';
+    ctx.lineWidth = 16;
+    ctx.strokeText(text, 0, 0);
+    const g = ctx.createLinearGradient(0, -S * 0.09, 0, S * 0.09);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(1, tint);
+    ctx.fillStyle = g;
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  },
+
   /* 3 - 2 - 1 - GO. Holds the sim so nobody is shot during it. */
   _drawCountdown(ctx, game, w, h) {
     if (game.countdown <= 0) return;
@@ -867,7 +1027,7 @@ const Renderer = {
    */
   _drawIntro(ctx, game, w, h) {
     const t = game.time;
-    if (t > 2.4) return;
+    if (t > 2.4 || game.introT > 0) return;
     // Slide in, hold, slide out.
     const a = t < 0.35 ? t / 0.35 : t > 2.0 ? 1 - (t - 2.0) / 0.4 : 1;
     const slide = t < 0.35 ? (1 - a) * 90 : t > 2.0 ? (1 - a) * -90 : 0;
