@@ -17,7 +17,54 @@ function makeBrain() {
     strafeDir: Math.random() < 0.5 ? 1 : -1,
     strafeTimer: rand(0.6, 1.6),
     wanderAngle: rand(0, Math.PI * 2),
+    // Quick chat. Each one has its own habits so the lobby does not speak in
+    // unison: chatty players exist, so do silent ones.
+    chatCooldown: rand(4, 14),
+    chatiness: rand(0.35, 1),
+    chatPending: null,
+    lastHp: 1,
+    lastKills: 0,
   };
+}
+
+/*
+ * Bots use quick chat the way people do: to ask for help when they are about
+ * to die, to celebrate a kill, to call a retreat when they are outnumbered.
+ * It is reactive rather than random, because random chatter is the tell that
+ * gives a bot away faster than its aim does.
+ */
+function botChat(bot, game, dt) {
+  const ai = bot.ai;
+  ai.chatCooldown -= dt;
+
+  const hpFrac = bot.hp / bot.maxHp;
+  let want = -1;
+
+  if (bot.kills > ai.lastKills) want = 1;                       // Nice!
+  else if (hpFrac < 0.3 && ai.lastHp >= 0.3) want = 0;          // Help!
+  else if (hpFrac < 0.5 && ai.lastHp >= 0.5) want = 2;          // Retreat
+  else if (bot.superReady && hpFrac > 0.8 && Math.random() < 0.004) want = 3;  // Attack
+
+  ai.lastKills = bot.kills;
+  ai.lastHp = hpFrac;
+
+  // A beat of hesitation before speaking — an instant reply reads as a script.
+  // Ticked on the simulation clock rather than a wall-clock timer, so it
+  // behaves the same whether the game is running or being fast-forwarded.
+  if (ai.chatPending) {
+    ai.chatPending.t -= dt;
+    if (ai.chatPending.t <= 0) {
+      const idx = ai.chatPending.i;
+      ai.chatPending = null;
+      if (bot.alive) game.sendEmote(bot, idx);
+    }
+    return;
+  }
+
+  if (want < 0 || ai.chatCooldown > 0) return;
+  if (Math.random() > ai.chatiness) { ai.chatCooldown = rand(3, 8); return; }
+  ai.chatCooldown = rand(6, 16);
+  ai.chatPending = { i: want, t: rand(0.15, 0.7) };
 }
 
 function botCanSee(bot, other) {
@@ -37,6 +84,8 @@ function updateBot(bot, game, dt) {
   inp.holding = false;
   inp.mx = 0;
   inp.my = 0;
+
+  botChat(bot, game, dt);
 
   ai.strafeTimer -= dt;
   if (ai.strafeTimer <= 0) {

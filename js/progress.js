@@ -28,16 +28,20 @@ function powerMult(level) {
 }
 
 /*
- * `up` is the chance this tier upgrades to the next one. Multiplied out these
- * land at roughly 65% Rare, 26% Super Rare, 7% Epic, 1.2% Mythic and 0.16%
- * Legendary — rare enough that a Legendary is an event, common enough that
- * you will actually see one.
+ * `up` is the chance this tier upgrades to the next one, chosen so the odds of
+ * *stopping* on each tier match the published Brawl Stars Starr Drop rates:
+ * 50 / 28 / 15 / 5 / 2 percent. Solving backwards from those marginals is why
+ * they are not round numbers.
+ *
+ * The rates that were here before were guessed, and they were miserable —
+ * Mythic landed near one drop in eighty. This puts it at one in twenty, and
+ * something Mythic or better inside about fourteen pods.
  */
 const DROP_RARITIES = [
-  { id: 'rare', name: 'Rare', color: '#4ade80', up: 0.35 },
-  { id: 'superrare', name: 'Super Rare', color: '#38bdf8', up: 0.25 },
-  { id: 'epic', name: 'Epic', color: '#c084fc', up: 0.15 },
-  { id: 'mythic', name: 'Mythic', color: '#fb7185', up: 0.12 },
+  { id: 'rare', name: 'Rare', color: '#4ade80', up: 0.5000 },
+  { id: 'superrare', name: 'Super Rare', color: '#38bdf8', up: 0.4400 },
+  { id: 'epic', name: 'Epic', color: '#c084fc', up: 0.3182 },
+  { id: 'mythic', name: 'Mythic', color: '#fb7185', up: 0.2857 },
   { id: 'legendary', name: 'Legendary', color: '#fbbf24', up: 0 },
 ];
 

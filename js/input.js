@@ -93,8 +93,6 @@ const Input = {
       // the stick for space and never runs off the side on a short screen.
       emoteBtn: { x: pad + r * 2.5, y: h - pad - r * 0.45, r: Math.max(17, r * 0.36) },
       muteBtn: { x: w - pad * 0.8, y: pad * 0.8, r: Math.max(15, r * 0.28) },
-      // Health and ammo sit directly above the move stick, pinned to the edge.
-      vitals: { x: pad, y: h - pad - r * 2 - 26, w: Math.min(210, w * 0.28), h: 15 },
     };
   },
 

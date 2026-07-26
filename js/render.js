@@ -471,6 +471,7 @@ const Renderer = {
   },
 
   _drawPlates(ctx, game) {
+    this._drawOwnAmmo(ctx, game);
     for (const b of game.brawlers) {
       if (!b.alive || !game.visibleToPlayer(b)) continue;
       this._drawEmote(ctx, b);
@@ -764,7 +765,6 @@ const Renderer = {
 
     if (Input.usingTouch) {
       this._drawTouchControls(ctx, w, h, game);
-      this._drawMobileVitals(ctx, game, w, h);
       this._drawEmoteWheel(ctx, w, h);
       this._drawMute(ctx, w, h);
     }
@@ -1035,52 +1035,32 @@ const Renderer = {
   },
 
   /*
-   * On a phone the full panel does not fit, but health and ammo are not
-   * optional — without ammo pips you cannot tell a dry clip from a jammed
-   * button. This is the same information, sized for a thumb-held screen.
+   * Ammo lives under your own fighter rather than in a corner box. The health
+   * bar that used to sit down there duplicated the plate already floating above
+   * the character, so it was two readouts of one number competing for a glance.
    */
-  _drawMobileVitals(ctx, game, w, h) {
+  _drawOwnAmmo(ctx, game) {
     const p = game.player;
-    if (!p) return;
-    const L = Input.layout(w, h);
-    const bw = L.vitals.w, bh = L.vitals.h;
-    const x = L.vitals.x, y = L.vitals.y;
+    if (!p || !p.alive) return;
+    const n = p.maxAmmo;
+    if (!n) return;
+    const bw = Math.max(52, p.radius * 3);
+    const gap = 3;
+    const pw = (bw - (n - 1) * gap) / n;
+    const x = p.x - bw / 2;
+    const y = p.y - p.radius - 8;
 
     ctx.save();
-    ctx.fillStyle = 'rgba(9,11,16,.72)';
-    this._roundRect(ctx, x - 6, y - 6, bw + 12, bh + 24, 10);
-    ctx.fill();
-
-    ctx.fillStyle = '#111827';
-    this._roundRect(ctx, x, y, bw, bh, 7);
-    ctx.fill();
-    ctx.fillStyle = p.alive ? '#34d399' : '#4b5563';
-    this._roundRect(ctx, x, y, bw * clamp(p.hp / p.maxHp, 0, 1), bh, 7);
-    ctx.fill();
-    if (p.shieldHp > 0) {
-      ctx.fillStyle = 'rgba(125,211,252,.9)';
-      this._roundRect(ctx, x, y, bw * clamp(p.shieldHp / p.maxHp, 0, 1), bh, 7);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(String(Math.max(0, Math.ceil(p.hp))), x + bw / 2, y + bh / 2);
-
-    // Ammo pips, with the reloading one filling up.
-    const n = p.maxAmmo;
-    const pw = (bw - (n - 1) * 4) / n;
-    const py = y + bh + 5;
     for (let i = 0; i < n; i++) {
-      const px = x + i * (pw + 4);
-      ctx.fillStyle = 'rgba(255,255,255,.16)';
-      this._roundRect(ctx, px, py, pw, 6, 3);
+      const px = x + i * (pw + gap);
+      ctx.fillStyle = 'rgba(10,6,20,.72)';
+      this._roundRect(ctx, px - 1, y - 1, pw + 2, 7, 3.5);
       ctx.fill();
-      let fill = i < p.ammo ? 1 : (i === p.ammo ? clamp(p.reloadTimer / p.def.reload, 0, 1) : 0);
-      if (fill > 0) {
-        ctx.fillStyle = i < p.ammo ? '#facc15' : 'rgba(250,204,21,.45)';
-        this._roundRect(ctx, px, py, pw * fill, 6, 3);
+      const filling = i === p.ammo ? clamp(p.reloadTimer / p.def.reload, 0, 1) : 0;
+      const full = i < p.ammo;
+      if (full || filling > 0) {
+        ctx.fillStyle = full ? '#facc15' : 'rgba(250,204,21,.5)';
+        this._roundRect(ctx, px, y, pw * (full ? 1 : filling), 5, 2.5);
         ctx.fill();
       }
     }
