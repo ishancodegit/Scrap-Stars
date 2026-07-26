@@ -762,7 +762,12 @@ const Renderer = {
       ctx.fillText(Math.ceil(game.player.respawnTimer).toString(), w / 2, h / 2 + 30);
     }
 
-    if (Input.usingTouch) this._drawTouchControls(ctx, w, h, game);
+    if (Input.usingTouch) {
+      this._drawTouchControls(ctx, w, h, game);
+      this._drawMobileVitals(ctx, game, w, h);
+      this._drawEmoteWheel(ctx, w, h);
+      this._drawMute(ctx, w, h);
+    }
     this._drawLowHp(ctx, game, w, h);
     this._drawIntro(ctx, game, w, h);
     this._drawCallout(ctx, game, w, h);
@@ -1027,6 +1032,133 @@ const Renderer = {
         ctx.fillText(banner.sub, cx, panelH + (compact ? 74 : 88));
       }
     }
+  },
+
+  /*
+   * On a phone the full panel does not fit, but health and ammo are not
+   * optional — without ammo pips you cannot tell a dry clip from a jammed
+   * button. This is the same information, sized for a thumb-held screen.
+   */
+  _drawMobileVitals(ctx, game, w, h) {
+    const p = game.player;
+    if (!p) return;
+    const L = Input.layout(w, h);
+    const bw = L.vitals.w, bh = L.vitals.h;
+    const x = L.vitals.x, y = L.vitals.y;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(9,11,16,.72)';
+    this._roundRect(ctx, x - 6, y - 6, bw + 12, bh + 24, 10);
+    ctx.fill();
+
+    ctx.fillStyle = '#111827';
+    this._roundRect(ctx, x, y, bw, bh, 7);
+    ctx.fill();
+    ctx.fillStyle = p.alive ? '#34d399' : '#4b5563';
+    this._roundRect(ctx, x, y, bw * clamp(p.hp / p.maxHp, 0, 1), bh, 7);
+    ctx.fill();
+    if (p.shieldHp > 0) {
+      ctx.fillStyle = 'rgba(125,211,252,.9)';
+      this._roundRect(ctx, x, y, bw * clamp(p.shieldHp / p.maxHp, 0, 1), bh, 7);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(Math.max(0, Math.ceil(p.hp))), x + bw / 2, y + bh / 2);
+
+    // Ammo pips, with the reloading one filling up.
+    const n = p.maxAmmo;
+    const pw = (bw - (n - 1) * 4) / n;
+    const py = y + bh + 5;
+    for (let i = 0; i < n; i++) {
+      const px = x + i * (pw + 4);
+      ctx.fillStyle = 'rgba(255,255,255,.16)';
+      this._roundRect(ctx, px, py, pw, 6, 3);
+      ctx.fill();
+      let fill = i < p.ammo ? 1 : (i === p.ammo ? clamp(p.reloadTimer / p.def.reload, 0, 1) : 0);
+      if (fill > 0) {
+        ctx.fillStyle = i < p.ammo ? '#facc15' : 'rgba(250,204,21,.45)';
+        this._roundRect(ctx, px, py, pw * fill, 6, 3);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  },
+
+  /* Quick chat, opened from the button by the move stick. */
+  _drawEmoteWheel(ctx, w, h) {
+    const L = Input.layout(w, h);
+    const open = Input.emoteOpen;
+
+    ctx.save();
+    ctx.globalAlpha = open ? 1 : 0.5;
+    ctx.beginPath();
+    ctx.arc(L.emoteBtn.x, L.emoteBtn.y, L.emoteBtn.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(12,7,24,.7)';
+    ctx.fill();
+    ctx.strokeStyle = open ? '#facc15' : 'rgba(255,255,255,.35)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = `900 ${Math.round(L.emoteBtn.r * 1.05)}px ui-rounded, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('“”', L.emoteBtn.x, L.emoteBtn.y + 2);
+    ctx.restore();
+
+    if (!open) return;
+    for (const slot of Input.emoteSlots(w, h)) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(slot.x, slot.y, slot.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(20,12,34,.92)';
+      ctx.fill();
+      ctx.strokeStyle = slot.emote.color;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = slot.emote.color;
+      ctx.font = `900 ${Math.round(slot.r * 1.1)}px ui-rounded, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(slot.emote.icon, slot.x, slot.y + 1);
+      ctx.restore();
+    }
+  },
+
+  /* Muting is keyboard-only otherwise, which is no use on a phone. */
+  _drawMute(ctx, w, h) {
+    const L = Input.layout(w, h);
+    const m = L.muteBtn;
+    ctx.save();
+    ctx.globalAlpha = 0.72;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(12,7,24,.75)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(m.x - m.r * 0.34, m.y - m.r * 0.2);
+    ctx.lineTo(m.x - m.r * 0.1, m.y - m.r * 0.2);
+    ctx.lineTo(m.x + m.r * 0.16, m.y - m.r * 0.46);
+    ctx.lineTo(m.x + m.r * 0.16, m.y + m.r * 0.46);
+    ctx.lineTo(m.x - m.r * 0.1, m.y + m.r * 0.2);
+    ctx.lineTo(m.x - m.r * 0.34, m.y + m.r * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    if (Sfx.muted) {
+      ctx.strokeStyle = '#fb7185';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(m.x - m.r * 0.5, m.y - m.r * 0.5);
+      ctx.lineTo(m.x + m.r * 0.5, m.y + m.r * 0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
   },
 
   _drawPlayerPanel(ctx, game, w, h) {

@@ -195,7 +195,10 @@ const Game = {
     // The opening countdown and hit-stop both hold the simulation while the
     // presentation keeps running, so the screen never looks frozen.
     if (this.countdown > 0) {
+      const was = Math.ceil(this.countdown - 0.2);
       this.countdown -= dt;
+      const now2 = Math.ceil(this.countdown - 0.2);
+      if (now2 !== was) Sfx.play(now2 <= 0 ? 'go' : 'countdown');
       dt = 0;
     } else if (this.stopTimer > 0) {
       this.stopTimer -= dt;
@@ -375,7 +378,7 @@ const Game = {
     const e = EMOTES[index];
     if (!who || !e) return;
     who.emote = { icon: e.icon, color: e.color, life: 2.2, max: 2.2 };
-    Sfx.play('tick');
+    Sfx.play('emote');
     if (typeof Net !== 'undefined' && Net.connected) {
       Net.send({ t: 'em', i: this.brawlers.indexOf(who), e: index });
     }
@@ -561,7 +564,7 @@ const Game = {
         source.team !== target.team && source.alive) {
       this.healTarget(source, dealt * 0.35, source);
     }
-    if (!silent) Sfx.play('hit');
+    if (!silent) Sfx.play(target === this.player ? 'hurt' : 'hit');
 
     if (target === this.player || (source && source === this.player)) {
       this.floatText(target.x, target.y - target.radius - 24, `-${Math.round(dealt)}`,
@@ -607,7 +610,7 @@ const Game = {
       const call = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'RAMPAGE'][Math.min(source.streak, 4)];
       if (call) {
         this.callout = { text: call, life: 1.8, max: 1.8, mine: source === this.player };
-        Sfx.play('charged');
+        Sfx.play('streak');
       }
     }
 

@@ -20,6 +20,7 @@ const Input = {
   superStick: null,
   superAim: null,
   emoteQueued: -1,
+  emoteOpen: false,
   hyperFlash: 0,
   aimReleased: false,
   releaseAim: null,
@@ -88,7 +89,35 @@ const Input = {
       aim: { x: w - pad - r * 4.2, y: h - pad - r * 0.9, r },
       superBtn: { x: w - pad - r * 0.9, y: h - pad - r * 0.9, r: r * 0.72 },
       hyperBtn: { x: w - pad - r * 2.25, y: h - pad - r * 1.25, r: r * 0.5 },
+      // Inboard of the move stick along the bottom edge, so it never fights
+      // the stick for space and never runs off the side on a short screen.
+      emoteBtn: { x: pad + r * 2.5, y: h - pad - r * 0.45, r: Math.max(17, r * 0.36) },
+      muteBtn: { x: w - pad * 0.8, y: pad * 0.8, r: Math.max(15, r * 0.28) },
+      // Health and ammo sit directly above the move stick, pinned to the edge.
+      vitals: { x: pad, y: h - pad - r * 2 - 26, w: Math.min(210, w * 0.28), h: 15 },
     };
+  },
+
+  /*
+   * Where each quick-chat option sits once the wheel is open. The fan opens
+   * upward and to the right and is clamped inside the viewport, because a
+   * landscape phone is short enough that a symmetric ring would hang off it.
+   */
+  emoteSlots(w, h) {
+    const L = this.layout(w, h);
+    const c = L.emoteBtn;
+    const R = c.r * 2.8;
+    const spread = 1.9;
+    return EMOTES.map((e, i) => {
+      const t = EMOTES.length === 1 ? 0.5 : i / (EMOTES.length - 1);
+      const a = -Math.PI + 0.35 + t * spread;      // sweeps left-up to right-up
+      const r = c.r * 0.94;
+      return {
+        x: clamp(c.x + Math.cos(a) * R, r + 4, w - r - 4),
+        y: clamp(c.y + Math.sin(a) * R, r + 4, h - r - 4),
+        r, index: i, emote: e,
+      };
+    });
   },
 
   _hit(p, x, y, slack = 8) {
@@ -102,6 +131,29 @@ const Input = {
    */
   _pressButton(x, y, w, h, id) {
     const L = this.layout(w, h);
+
+    // An open wheel eats the press, whether it lands on an option or not.
+    if (this.emoteOpen) {
+      for (const slot of this.emoteSlots(w, h)) {
+        if (this._hit(slot, x, y, 10)) {
+          this.emoteQueued = slot.index;
+          this.emoteOpen = false;
+          return true;
+        }
+      }
+      this.emoteOpen = false;
+      return true;
+    }
+    if (this._hit(L.emoteBtn, x, y)) {
+      this.emoteOpen = true;
+      return true;
+    }
+    if (this._hit(L.muteBtn, x, y)) {
+      const muted = Sfx.toggle();
+      const note = document.getElementById('muted');
+      if (note) note.textContent = muted ? 'Sound: off (M)' : 'Sound: on (M)';
+      return true;
+    }
     if (this._hit(L.superBtn, x, y)) {
       this.superStick = { id, ox: x, oy: y, x, y, r: L.r };
       this.superFlash = 0.3;

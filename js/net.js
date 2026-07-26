@@ -330,7 +330,7 @@ const Net = {
       const e = EMOTES[msg.e];
       if (b && e) {
         b.emote = { icon: e.icon, color: e.color, life: 2.2, max: 2.2 };
-        Sfx.play('tick');
+        Sfx.play('emote');
       }
     } else if (msg.t === 'log') {
       if (typeof Game !== 'undefined') Game.log(msg.m, msg.c);
