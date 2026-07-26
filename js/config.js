@@ -85,6 +85,18 @@ const BOT_NAMES = [
   'lumi', 'TK_Ghost', 'quill', 'Static', 'nine', 'Rook',
 ];
 
+/*
+ * Quick chat. Four is the whole set on purpose — enough to say the useful
+ * things, too few to spam anything unpleasant. Keys 1-4, or hold the emote
+ * button on a touchscreen.
+ */
+const EMOTES = [
+  { key: '1', icon: '!', label: 'Help!', color: '#fbbf24' },
+  { key: '2', icon: '\u2713', label: 'Nice!', color: '#4ade80' },
+  { key: '3', icon: '\u2190', label: 'Retreat', color: '#38bdf8' },
+  { key: '4', icon: '\u2691', label: 'Attack', color: '#fb7185' },
+];
+
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 const dist2 = (ax, ay, bx, by) => {

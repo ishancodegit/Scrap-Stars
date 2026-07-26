@@ -119,71 +119,64 @@
 <div id="friends" class="overlay hidden">
   <div class="sheet narrowish">
     <div class="sheethead">
-      <h2>Play with a friend</h2>
+      <h2 id="friends-title">Play with a friend</h2>
       <button id="friends-back" class="ghost">Back</button>
     </div>
 
-    <div class="roombox">
-      <div class="roomlabel">Your room code</div>
-      <div id="host-room-code" class="roomcode">····</div>
-      <button id="host-copy-link" class="upbtn fcopy">Copy invite link</button>
-      <div class="roomhint">Send the link. Your friend opens it and the match starts — nothing else to do.</div>
+    <!-- HOST -->
+    <div id="f-host" class="fpane">
+      <ol class="fsteps">
+        <li>
+          <span class="fstep">1</span>
+          <div>
+            <b>Send your friend this link</b>
+            <button id="f-copy-invite" class="upbtn fcopy wide">Copy invite link</button>
+            <div id="f-room-line" class="roomline hidden">
+              …or give them the room code <b id="f-room-code">····</b> — then they need nothing else.
+            </div>
+          </div>
+        </li>
+        <li>
+          <span class="fstep">2</span>
+          <div>
+            <b>They&rsquo;ll send one back. Paste it here.</b>
+            <textarea id="f-reply-in" class="fcode" rows="2"
+                      placeholder="Paste your friend's reply link"></textarea>
+            <button id="f-connect" class="upbtn fcopy wide">Connect &amp; start</button>
+          </div>
+        </li>
+      </ol>
     </div>
 
-    <div class="ordiv"><span>or join a friend</span></div>
-
-    <div class="joinrow">
-      <input id="join-room-code" class="roominput" maxlength="4" autocomplete="off"
-             autocapitalize="characters" spellcheck="false" placeholder="CODE" />
-      <button id="join-room-go" class="play small">JOIN</button>
+    <!-- GUEST -->
+    <div id="f-guest" class="fpane hidden">
+      <ol class="fsteps">
+        <li>
+          <span class="fstep">1</span>
+          <div>
+            <b>Send this back to whoever invited you</b>
+            <button id="f-copy-reply" class="upbtn fcopy wide">Copy reply link</button>
+            <div class="roomhint">The match starts on their screen the moment they paste it.</div>
+          </div>
+        </li>
+      </ol>
     </div>
 
-    <p id="friend-status" class="fstatus">Getting a room ready…</p>
+    <!-- JOIN BY CODE -->
+    <div id="f-join" class="fpane">
+      <div class="ordiv"><span>or join a room code</span></div>
+      <div class="joinrow">
+        <input id="join-room-code" class="roominput" maxlength="4" autocomplete="off"
+               autocapitalize="characters" spellcheck="false" placeholder="CODE" />
+        <button id="join-room-go" class="play small">JOIN</button>
+      </div>
+    </div>
+
+    <p id="friend-status" class="fstatus">Getting your invite ready…</p>
     <details id="diag-wrap" class="diagbox">
       <summary>Connection details</summary>
       <ol id="diag-log" class="diaglog"></ol>
     </details>
-    <button id="show-manual" class="linkbtn">Trouble connecting? Swap codes by hand</button>
-
-    <div id="manual-wrap" class="fflow hidden">
-      <ol class="fsteps">
-        <li>
-          <span class="fstep">1</span>
-          <div>
-            <b>Send this invite code to your friend</b>
-            <textarea id="host-code" class="fcode" readonly rows="3"></textarea>
-            <button id="host-copy" class="upbtn fcopy">Copy invite code</button>
-          </div>
-        </li>
-        <li>
-          <span class="fstep">2</span>
-          <div>
-            <b>Paste the reply code they send back</b>
-            <textarea id="host-reply" class="fcode" rows="3" placeholder="Paste their reply code"></textarea>
-            <button id="host-connect" class="upbtn fcopy">Connect</button>
-          </div>
-        </li>
-      </ol>
-      <div class="ordiv"><span>or, if they sent you an invite code</span></div>
-      <ol class="fsteps">
-        <li>
-          <span class="fstep">1</span>
-          <div>
-            <b>Paste their invite code</b>
-            <textarea id="join-code" class="fcode" rows="3" placeholder="Paste their invite code"></textarea>
-            <button id="join-go" class="upbtn fcopy">Generate reply code</button>
-          </div>
-        </li>
-        <li>
-          <span class="fstep">2</span>
-          <div>
-            <b>Send this reply code back</b>
-            <textarea id="join-reply" class="fcode" readonly rows="3"></textarea>
-            <button id="join-copy" class="upbtn fcopy">Copy reply code</button>
-          </div>
-        </li>
-      </ol>
-    </div>
   </div>
 </div>
 

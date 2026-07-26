@@ -186,30 +186,24 @@ const Net = {
    * Host with a four-character room code. The offer is published retained, so
    * a friend who types the code a minute later still finds it waiting.
    */
-  async hostRoom(onCode, onFail) {
-    this.close();
-    this.role = 'host';
-    this._set('creating');
-    this.pc = this._newPeer();
-    this.ch = this.pc.createDataChannel('play', { ordered: false, maxRetransmits: 0 });
-    this._wireChannel(this.ch);
+  /*
+   * Advertise the offer this host already built under a room code. The link is
+   * the real path; this only saves the friend a paste when the broker is up,
+   * so it must never disturb the connection that is already waiting.
+   */
+  hostRoomWith(packedOffer, onCode, onFail) {
+    if (!this.pc || !this.isHost) return;
     const pc = this.pc;
     const gen = pc._gen;
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await this._gathered(pc);
-    if (!this._current(gen)) return;               // the player moved on
-
     const room = Rooms.newCode();
     this.roomCode = room;
     this._offerId = Math.random().toString(36).slice(2, 10);
 
-    Rooms.onFail = (why) => { this._set('nosignal'); if (onFail) onFail(why); };
+    Rooms.onFail = (why) => { this.log('no room service'); if (onFail) onFail(why); };
     Rooms.onReady = () => {
       if (!this._current(gen)) return;
       this.log('room service reached');
       Rooms.publish('offer', { id: this._offerId, sdp: pc.localDescription.sdp }, true);
-      this._set('waiting');
       if (onCode) onCode(room);
     };
     Rooms.onMessage = async (msg) => {
@@ -331,6 +325,13 @@ const Net = {
       this.remoteInput = msg;
     } else if (msg.t === 'end') {
       if (typeof Game !== 'undefined' && Game.state === 'playing') Game.finish(msg.w);
+    } else if (msg.t === 'em') {
+      const b = Game.brawlers[msg.i];
+      const e = EMOTES[msg.e];
+      if (b && e) {
+        b.emote = { icon: e.icon, color: e.color, life: 2.2, max: 2.2 };
+        Sfx.play('tick');
+      }
     } else if (msg.t === 'log') {
       if (typeof Game !== 'undefined') Game.log(msg.m, msg.c);
     }

@@ -61,6 +61,8 @@ class Brawler {
     this.spawnGuard = 0;
     this.kills = 0;
     this.deaths = 0;
+    this.damageDealt = 0;
+    this.emote = null;          // { icon, life }
     this.stars = 0;          // Bounty
     this.lockFlash = 0;      // brief marker over an auto-aim target
     this.lockTarget = null;

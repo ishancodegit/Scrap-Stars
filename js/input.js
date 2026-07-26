@@ -19,6 +19,7 @@ const Input = {
   // already point. Same gesture with a thumb or a mouse.
   superStick: null,
   superAim: null,
+  emoteQueued: -1,
   hyperFlash: 0,
   aimReleased: false,
   releaseAim: null,
@@ -32,6 +33,8 @@ const Input = {
       this.keys.add(e.key.toLowerCase());
       if (e.key === ' ') this.superQueued = true;
       if (e.key.toLowerCase() === 'q') this.hyperQueued = true;
+      const emote = EMOTES.findIndex((x) => x.key === e.key);
+      if (emote >= 0) this.emoteQueued = emote;
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => { this.keys.clear(); this.firing = false; });
@@ -203,6 +206,12 @@ const Input = {
     const q = this.superQueued;
     this.superQueued = false;
     return q;
+  },
+
+  consumeEmote() {
+    const e = this.emoteQueued;
+    this.emoteQueued = -1;
+    return e;
   },
 
   consumeHyper() {

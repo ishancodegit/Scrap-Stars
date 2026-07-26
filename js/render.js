@@ -434,9 +434,46 @@ const Renderer = {
   },
 
   /* Nameplates draw after the foliage so they are never lost behind a bush. */
+  /* A quick-chat bubble over whoever sent it. */
+  _drawEmote(ctx, b) {
+    const e = b.emote;
+    if (!e) return;
+    const t = 1 - e.life / e.max;
+    const rise = Math.min(1, t / 0.16);
+    const R = 17;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, e.life / 0.35);
+    ctx.translate(b.x, b.y - b.radius - 52 - rise * 8);
+    ctx.scale(0.6 + rise * 0.4, 0.6 + rise * 0.4);
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#12071f';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    // Tail pointing back down at the speaker.
+    ctx.beginPath();
+    ctx.moveTo(-6, R - 2);
+    ctx.lineTo(0, R + 9);
+    ctx.lineTo(6, R - 2);
+    ctx.closePath();
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = e.color;
+    ctx.font = '900 21px ui-rounded, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(e.icon, 0, 1);
+    ctx.restore();
+  },
+
   _drawPlates(ctx, game) {
     for (const b of game.brawlers) {
       if (!b.alive || !game.visibleToPlayer(b)) continue;
+      this._drawEmote(ctx, b);
       const isPlayer = b === game.player;
       const r = b.radius;
       ctx.save();
@@ -726,8 +763,84 @@ const Renderer = {
     }
 
     if (Input.usingTouch) this._drawTouchControls(ctx, w, h, game);
+    this._drawLowHp(ctx, game, w, h);
     this._drawIntro(ctx, game, w, h);
+    this._drawCallout(ctx, game, w, h);
+    this._drawCountdown(ctx, game, w, h);
     this._drawNetBadge(ctx, w, h);
+  },
+
+  /*
+   * Red creeps in from the edges as health drops. The health bar is small and
+   * in a corner; this is readable without looking away from the fight.
+   */
+  _drawLowHp(ctx, game, w, h) {
+    const p = game.player;
+    if (!p || !p.alive) return;
+    const frac = p.hp / p.maxHp;
+    if (frac > 0.4) return;
+    const hurt = 1 - frac / 0.4;
+    const pulse = 0.55 + 0.45 * Math.sin(game.time * (5 + hurt * 5));
+    ctx.save();
+    ctx.globalAlpha = hurt * 0.5 * pulse;
+    const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28,
+                                       w / 2, h / 2, Math.max(w, h) * 0.62);
+    g.addColorStop(0, 'rgba(190,20,40,0)');
+    g.addColorStop(1, 'rgba(190,20,40,1)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  },
+
+  /* DOUBLE KILL and friends. Big, brief, and gone. */
+  _drawCallout(ctx, game, w, h) {
+    const c = game.callout;
+    if (!c) return;
+    const t = 1 - c.life / c.max;
+    const pop = t < 0.18 ? t / 0.18 : 1;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, c.life / 0.4);
+    ctx.translate(w / 2, h * 0.24);
+    ctx.scale(0.7 + pop * 0.3, 0.7 + pop * 0.3);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.font = '900 46px ui-rounded, system-ui, sans-serif';
+    ctx.strokeStyle = '#12071f';
+    ctx.lineWidth = 10;
+    ctx.strokeText(c.text, 0, 0);
+    const g = ctx.createLinearGradient(0, -26, 0, 26);
+    g.addColorStop(0, '#fff6d5');
+    g.addColorStop(1, c.mine ? '#ffb020' : '#ff6b81');
+    ctx.fillStyle = g;
+    ctx.fillText(c.text, 0, 0);
+    ctx.restore();
+  },
+
+  /* 3 - 2 - 1 - GO. Holds the sim so nobody is shot during it. */
+  _drawCountdown(ctx, game, w, h) {
+    if (game.countdown <= 0) return;
+    const n = Math.ceil(game.countdown - 0.2);
+    const label = n <= 0 ? 'GO!' : String(n);
+    const frac = (game.countdown - 0.2) % 1;
+    const pop = 1 - Math.min(1, frac);
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = '#0b0518';
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(1.5 - pop * 0.5, 1.5 - pop * 0.5);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.font = '900 96px ui-rounded, system-ui, sans-serif';
+    ctx.strokeStyle = '#12071f';
+    ctx.lineWidth = 16;
+    ctx.strokeText(label, 0, 0);
+    ctx.fillStyle = label === 'GO!' ? '#4ade80' : '#ffc738';
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
   },
 
   /*

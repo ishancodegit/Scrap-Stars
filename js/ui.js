@@ -343,34 +343,45 @@ const UI = {
     // opening itself takes over the whole screen.
     this._paintDropButton();
 
-    const rows = Game.brawlers
-      .slice()
-      .sort((a, b) => (b.kills - a.kills) || (b.deaths - a.deaths))
-      .map((b) => `
+    // MVP is whoever contributed most, not simply who has the most kills —
+    // a support who healed and chipped all match should be able to win it.
+    const scored = Game.brawlers.map((b) => ({
+      b, score: (b.damageDealt || 0) + b.kills * 1200 - b.deaths * 300,
+    })).sort((x, y) => y.score - x.score);
+    const mvp = scored.length ? scored[0].b : null;
+
+    const rows = scored.map(({ b }) => `
         <tr class="${b.team === Game.playerTeam ? 'ally' : 'enemy'}">
-          <td>${b.name === 'You' ? '<b>You</b>' : b.name}</td>
+          <td>${b === mvp ? '<i class="mvp">MVP</i> ' : ''}${b.name === 'You' ? '<b>You</b>' : b.name}</td>
           <td>${b.def.name}</td>
+          <td>${Math.round(b.damageDealt || 0).toLocaleString()}</td>
           <td>${b.kills}</td>
           <td>${b.deaths}</td>
         </tr>`).join('');
     document.getElementById('scoreboard').innerHTML =
-      `<tr><th>Player</th><th>Brawler</th><th>K</th><th>D</th></tr>${rows}`;
+      `<tr><th>Player</th><th>Fighter</th><th>Damage</th><th>K</th><th>D</th></tr>${rows}`;
   },
 
   /* ---------------- play with a friend ---------------- */
 
-  _resetFriends() {
-    Net.diag = [];
-    const dl = document.getElementById('diag-log');
-    if (dl) dl.innerHTML = '';
-    for (const id of ['host-code', 'host-reply', 'join-code', 'join-reply', 'join-room-code']) {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    }
-    document.getElementById('host-room-code').textContent = '\u00b7\u00b7\u00b7\u00b7';
-    document.getElementById('manual-wrap').classList.add('hidden');
-    document.getElementById('show-manual').classList.remove('hidden');
-    this._say('');
+  /*
+   * Two browsers have to hand each other one message each. A broker can do it
+   * invisibly, but every broker is a service that can be blocked or down, so
+   * it is never the only route: the links below carry the same two messages by
+   * hand and depend on nothing but the players.
+   */
+
+  _link(param, blob) {
+    return location.origin + location.pathname + '?' + param + '=' + encodeURIComponent(blob);
+  },
+
+  /* Accept a pasted link or a bare code — people paste whichever they have. */
+  _unlink(text) {
+    const t = String(text || '').trim();
+    if (!t) return '';
+    const m = t.match(/[?&]a=([^&\s]+)/);
+    if (m) { try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; } }
+    return t.replace(/\s+/g, '');
   },
 
   _say(text) {
@@ -378,25 +389,51 @@ const UI = {
     if (el) el.textContent = text;
   },
 
-  /* Open the screen and get a room going straight away — one less thing to press. */
-  _openFriends() {
-    this._resetFriends();
-    this.show('friends');
-    this._say('Getting a room ready\u2026');
-    Net.hostRoom(
-      (code) => {
-        document.getElementById('host-room-code').textContent = code;
-        this._say('Waiting for your friend\u2026');
-        this._armWhenConnected();
-      },
-      () => {
-        document.getElementById('host-room-code').textContent = '—';
-        this._showManual('Could not reach the room service. Swap the codes below instead.');
-      },
-    );
+  _pane(which) {
+    document.getElementById('f-host').classList.toggle('hidden', which !== 'host');
+    document.getElementById('f-guest').classList.toggle('hidden', which !== 'guest');
+    document.getElementById('f-join').classList.toggle('hidden', which !== 'host');
+    document.getElementById('friends-title').textContent =
+      which === 'guest' ? 'Almost there' : 'Play with a friend';
   },
 
-  /* The host owns the match, so it launches for both once the link is up. */
+  _resetFriends() {
+    Net.diag = [];
+    const dl = document.getElementById('diag-log');
+    if (dl) dl.innerHTML = '';
+    document.getElementById('f-reply-in').value = '';
+    document.getElementById('join-room-code').value = '';
+    document.getElementById('f-room-line').classList.add('hidden');
+    document.getElementById('f-room-code').textContent = '····';
+  },
+
+  /*
+   * Opening the screen builds an invite straight away, then tries for a room
+   * code on top. The link works whether or not the code ever arrives.
+   */
+  async _openFriends() {
+    this._resetFriends();
+    this._pane('host');
+    this.show('friends');
+    this._say('Getting your invite ready…');
+    try {
+      this._invite = await Net.createInvite();
+      this._say('Send the invite link. Paste their reply below when it comes back.');
+    } catch (e) {
+      this._say('Could not build an invite: ' + e.message);
+      return;
+    }
+    // A room code is a shortcut, not a requirement — failure here is silent.
+    Net.hostRoomWith(this._invite,
+      (code) => {
+        document.getElementById('f-room-code').textContent = code;
+        document.getElementById('f-room-line').classList.remove('hidden');
+        this._armWhenConnected();
+      },
+      () => { /* the link path is already live */ });
+    this._armWhenConnected();
+  },
+
   _armWhenConnected() {
     clearInterval(this._armTimer);
     this._armTimer = setInterval(() => {
@@ -404,44 +441,39 @@ const UI = {
       clearInterval(this._armTimer);
       if (Net.isHost) this.startMatch();
     }, 120);
-    setTimeout(() => clearInterval(this._armTimer), 120000);
+    setTimeout(() => clearInterval(this._armTimer), 180000);
   },
 
-  async _showManual(why) {
-    document.getElementById('manual-wrap').classList.remove('hidden');
-    document.getElementById('show-manual').classList.add('hidden');
-    if (!document.getElementById('host-code').value) {
-      try {
-        // Building an invite flips Net's own status, so restore the reason we
-        // ended up here afterwards rather than letting it be overwritten.
-        document.getElementById('host-code').value = await Net.createInvite();
-      } catch (e) { /* fall through to the message below */ }
+  /* Arrived on someone's invite link. */
+  async _acceptInvite(blob) {
+    this._resetFriends();
+    this._pane('guest');
+    this.show('friends');
+    this._say('Reading the invite…');
+    try {
+      this._reply = await Net.joinWithInvite(blob, 'Friend');
+      this._say('Send the reply link back — then just wait here.');
+    } catch (e) {
+      this._say('That invite link was incomplete. Ask them to send it again.');
     }
-    this._say(why || 'Swap the codes below with your friend.');
   },
 
   _wireFriends() {
     Net.onDiag = (lines) => {
       const el = document.getElementById('diag-log');
-      if (!el) return;
-      el.innerHTML = lines.map((l) => `<li>${l}</li>`).join('');
+      if (el) el.innerHTML = lines.map((l) => '<li>' + l + '</li>').join('');
     };
 
     Net.onStatus = (s) => {
       const text = {
-        creating: 'Getting a room ready\u2026',
-        waiting: 'Waiting for your friend\u2026',
-        joining: 'Looking for the room\u2026',
-        connecting: 'Connecting\u2026',
-        connected: 'Connected! Starting the match\u2026',
-        failed: 'That did not connect. Check the code and try again.',
-        nosignal: 'Could not reach the room service \u2014 swap codes by hand.',
+        connecting: 'Connecting…',
+        connected: 'Connected! Starting the match…',
+        failed: 'That did not connect. Try a fresh invite.',
         lost: 'Your friend disconnected.',
       }[s];
       if (text) this._say(text);
     };
 
-    // A guest is told about the match rather than starting one.
     Net.onInit = (init) => {
       for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'friends', 'result', 'paused']) {
         document.getElementById(id).classList.add('hidden');
@@ -449,56 +481,48 @@ const UI = {
       Game.startAsGuest(init);
     };
 
-    on('host-copy-link', () => {
-      const code = document.getElementById('host-room-code').textContent.trim();
-      if (!code || code.length !== 4) return this._say('The room is not ready yet.');
-      const link = location.origin + location.pathname + '?room=' + code;
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(link)
-          .then(() => this._say('Link copied. Send it over \u2014 they just open it.'))
-          .catch(() => this._say(link));
-      } else {
-        this._say(link);
+    on('f-copy-invite', () => {
+      if (!this._invite) return this._say('The invite is still being built.');
+      this._copy(this._link('i', this._invite), 'Invite link copied. Send it over.');
+    });
+
+    on('f-copy-reply', () => {
+      if (!this._reply) return this._say('The reply is still being built.');
+      this._copy(this._link('a', this._reply), 'Reply link copied. Send it back to them.');
+    });
+
+    on('f-connect', async () => {
+      const blob = this._unlink(document.getElementById('f-reply-in').value);
+      if (!blob) return this._say('Paste their reply link first.');
+      try {
+        await Net.acceptReply(blob);
+        this._say('Connecting…');
+        this._armWhenConnected();
+      } catch (e) {
+        this._say('That reply did not parse — paste the whole link.');
       }
     });
 
     on('join-room-go', () => this._joinRoom(document.getElementById('join-room-code').value));
-    on('show-manual', () => this._showManual());
-    on('host-copy', () => copyBox('host-code', 'friend-status'));
-    on('join-copy', () => copyBox('join-reply', 'friend-status'));
+  },
 
-    on('host-connect', async () => {
-      const code = document.getElementById('host-reply').value.trim();
-      if (!code) return this._say('Paste the reply code first.');
-      try {
-        await Net.acceptReply(code);
-        this._armWhenConnected();
-      } catch (e) {
-        this._say('That reply code did not parse. Copy the whole thing.');
-      }
-    });
-
-    on('join-go', async () => {
-      const code = document.getElementById('join-code').value.trim();
-      if (!code) return this._say('Paste their invite code first.');
-      try {
-        document.getElementById('join-reply').value = await Net.joinWithInvite(code, 'Friend');
-        this._say('Send that reply code back \u2014 the match starts on their screen.');
-      } catch (e) {
-        this._say('That invite code did not parse. Copy the whole thing.');
-      }
-    });
+  _copy(text, okMsg) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(() => this._say(okMsg))
+        .catch(() => this._say(text));
+    } else {
+      this._say(text);
+    }
   },
 
   _joinRoom(raw) {
     const code = String(raw || '').trim().toUpperCase();
     if (code.length !== 4) return this._say('Room codes are four characters.');
-    this._resetFriends();
-    this.show('friends');
-    document.getElementById('host-room-code').textContent = code;
-    this._say('Looking for room ' + code + '\u2026');
+    this._pane('guest');
+    this._say('Looking for room ' + code + '…');
     Net.joinRoom(code, 'Friend', () =>
-      this._showManual('Could not reach the room service. Swap the codes below instead.'));
+      this._say('Could not reach that room. Ask them for the invite link instead.'));
   },
 
   /* The bait on the result screen: how many drops are waiting, and a lid. */
@@ -693,10 +717,13 @@ function paintModeIcon(canvas, mode) {
   ctx.restore();
 }
 
-/* An invite link drops you straight into your friend's room. */
+/* Links do the work: ?i= is an invite, ?a= a reply, ?room= a code. */
 function joinFromUrl() {
-  const code = new URLSearchParams(location.search).get('room');
-  if (code && code.trim().length === 4) UI._joinRoom(code);
+  const q = new URLSearchParams(location.search);
+  const invite = q.get('i');
+  const room = q.get('room');
+  if (invite) UI._acceptInvite(invite);
+  else if (room && room.trim().length === 4) { UI.show('friends'); UI._joinRoom(room); }
 }
 
 window.addEventListener('load', () => {

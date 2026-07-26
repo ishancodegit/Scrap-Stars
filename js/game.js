@@ -42,6 +42,9 @@ const Game = {
   paused: false,
   result: null,
   tickParity: 0,
+  countdown: 0,
+  stopTimer: 0,
+  callout: null,
   _last: 0,
 
   start(brawlerId, modeId, difficulty, opts) {
@@ -115,6 +118,9 @@ const Game = {
     Renderer.camX = this.player.x;
     Renderer.camY = this.player.y;
     this.state = 'playing';
+    this.countdown = 3.2;
+    this.stopTimer = 0;
+    this.callout = null;
     Sfx.resume();
     if (typeof Net !== 'undefined' && Net.isHost && Net.connected) Net._sendInit();
   },
@@ -174,15 +180,34 @@ const Game = {
     Renderer.camX = this.player.x;
     Renderer.camY = this.player.y;
     this.state = 'playing';
+    this.countdown = 3.2;
+    this.stopTimer = 0;
+    this.callout = null;
     Sfx.resume();
   },
 
   /* ---------------- main loop ---------------- */
 
   frame(now) {
-    const dt = Math.min((now - this._last) / 1000 || 0, 0.05);
+    let dt = Math.min((now - this._last) / 1000 || 0, 0.05);
     this._last = now;
-    if (this.state === 'playing' && !this.paused) this.update(dt);
+
+    // The opening countdown and hit-stop both hold the simulation while the
+    // presentation keeps running, so the screen never looks frozen.
+    if (this.countdown > 0) {
+      this.countdown -= dt;
+      dt = 0;
+    } else if (this.stopTimer > 0) {
+      this.stopTimer -= dt;
+      dt = 0;
+    }
+    if (this.callout) {
+      this.callout.life -= Math.min((now - (this._calloutAt || now)) / 1000 || 0, 0.05);
+      if (this.callout.life <= 0) this.callout = null;
+    }
+    this._calloutAt = now;
+
+    if (this.state === 'playing' && !this.paused && dt > 0) this.update(dt);
     if (this.state !== 'menu') {
       Renderer.follow(this.player && this.player.alive ? this.player : null, dt);
       Renderer.draw(this, dt);
@@ -311,6 +336,8 @@ const Game = {
 
     inp.super = Input.consumeSuper();
     inp.hyper = Input.consumeHyper();
+    const em = Input.consumeEmote();
+    if (em >= 0) this.sendEmote(p, em);
 
     // A Super released from a drag goes where the drag pointed. A tapped one
     // goes wherever you were already aiming, or at the best target if nothing
@@ -340,6 +367,17 @@ const Game = {
         p.lockTarget = sol.target;
         p.lockFlash = 0.25;
       }
+    }
+  },
+
+  /* Show a quick-chat bubble, and tell the other side about it. */
+  sendEmote(who, index) {
+    const e = EMOTES[index];
+    if (!who || !e) return;
+    who.emote = { icon: e.icon, color: e.color, life: 2.2, max: 2.2 };
+    Sfx.play('tick');
+    if (typeof Net !== 'undefined' && Net.connected) {
+      Net.send({ t: 'em', i: this.brawlers.indexOf(who), e: index });
     }
   },
 
@@ -447,6 +485,13 @@ const Game = {
 
     for (const f of this.feed) f.life -= dt;
     this.feed = this.feed.filter((f) => f.life > 0);
+
+    for (const b of this.brawlers) {
+      if (b.emote) {
+        b.emote.life -= dt;
+        if (b.emote.life <= 0) b.emote = null;
+      }
+    }
   },
 
   /* ---------------- world interactions ---------------- */
@@ -478,6 +523,14 @@ const Game = {
     this.shake(5);
   },
 
+  /*
+   * A short freeze on a heavy hit. Two or three frames is enough for a blow to
+   * register as heavy rather than as a number going down.
+   */
+  hitStop(seconds) {
+    this.stopTimer = Math.max(this.stopTimer || 0, seconds);
+  },
+
   damage(target, amount, source, silent) {
     if (!target.alive || amount <= 0) return;
     if (target.spawnGuard > 0) return;
@@ -491,6 +544,13 @@ const Game = {
     const dealt = Math.min(target.hp, incoming);
     target.hp -= dealt;
     target.hurtFlash = 1;
+    if (source && source !== target && source.team !== target.team) {
+      source.damageDealt = (source.damageDealt || 0) + dealt;
+    }
+    // Only real blows freeze — chip damage from poison would stutter the game.
+    if (dealt > 700 && (target === this.player || source === this.player)) {
+      this.hitStop(dealt > 1600 ? 0.09 : 0.05);
+    }
 
     if (source && source !== target && source.team !== target.team && source.addCharge) {
       source.addCharge(dealt);
@@ -538,6 +598,18 @@ const Game = {
     this.burst(target.x, target.y, target.def.color, 26);
     this.shake(target === this.player ? 12 : 5);
     Sfx.play('death');
+
+    // Consecutive kills inside a short window read as a streak.
+    if (source && source.team !== target.team) {
+      const now = this.time;
+      source.streak = (now - (source.streakAt || -99) < 5) ? (source.streak || 0) + 1 : 1;
+      source.streakAt = now;
+      const call = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'RAMPAGE'][Math.min(source.streak, 4)];
+      if (call) {
+        this.callout = { text: call, life: 1.8, max: 1.8, mine: source === this.player };
+        Sfx.play('charged');
+      }
+    }
 
     const killer = source ? (source === this.player ? 'You' : source.name) : 'the arena';
     const victim = target === this.player ? 'You' : target.name;
