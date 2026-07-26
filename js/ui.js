@@ -22,19 +22,10 @@ const UI = {
     on('result-home', () => { Game.state = 'menu'; this.show('home'); });
 
     on('mode-card', () => this.show('modes'));
-
-    const aa = document.getElementById('autoaim');
-    const paintAA = () => aa.classList.toggle('on', Input.autoAim);
-    aa.addEventListener('click', () => { Input.autoAim = !Input.autoAim; paintAA(); });
-    paintAA();
-
-    for (const el of document.querySelectorAll('.diff-rail')) {
-      el.addEventListener('click', () => {
-        for (const d of document.querySelectorAll('.diff-rail')) d.classList.remove('active');
-        el.classList.add('active');
-        Game.difficulty = el.dataset.diff;
-      });
-    }
+    on('pick-road', () => { this._buildRoad(); this.show('road'); });
+    on('road-back', () => this.show('home'));
+    on('pick-skin', () => { this._buildSkins(); this.show('skins'); });
+    on('skins-back', () => this.show('home'));
 
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
@@ -42,10 +33,6 @@ const UI = {
       if (k === 'm') {
         const muted = Sfx.toggle();
         document.getElementById('muted').textContent = muted ? 'Sound: off (M)' : 'Sound: on (M)';
-      }
-      if (k === 't') {
-        Input.autoAim = !Input.autoAim;
-        document.getElementById('autoaim').classList.toggle('on', Input.autoAim);
       }
       if ((k === 'p' || k === 'escape') && Game.state === 'playing') {
         Game.paused = !Game.paused;
@@ -55,7 +42,7 @@ const UI = {
   },
 
   show(which) {
-    for (const id of ['home', 'brawlers', 'modes', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'result', 'paused']) {
       document.getElementById(id).classList.toggle('hidden', id !== which);
     }
     if (which === 'home') this._refreshHome();
@@ -78,9 +65,11 @@ const UI = {
     const def = BRAWLER_BY_ID[this.brawler];
     const card = this._modeCard();
 
-    paintPortrait(document.getElementById('home-portrait'), def, 1.5);
-    paintPortrait(document.getElementById('rail-portrait'), def, 0.85);
-    document.getElementById('home-brawler-name').textContent = def.name;
+    const worn = skinnedDef(def, Progress.equippedSkin(def.id));
+    paintPortrait(document.getElementById('home-portrait'), worn, 1.5);
+    paintPortrait(document.getElementById('rail-portrait'), worn, 0.85);
+    paintPortrait(document.getElementById('rail-skin'), worn, 0.85);
+    document.getElementById('home-brawler-name').textContent = worn.skinName || def.name;
     const cls = document.getElementById('home-brawler-class');
     cls.textContent = CLASSES[def.cls];
     cls.style.color = def.color;
@@ -111,6 +100,11 @@ const UI = {
       `${Ranked.won}W · ${Math.max(0, Ranked.played - Ranked.won)}L`;
     document.getElementById('stat-best').textContent = `Best ${Ranked.best}`;
     document.getElementById('stat-coins').textContent = Progress.coins;
+    document.getElementById('stat-credits').textContent = Progress.credits;
+
+    // The road icon is whoever you are saving toward.
+    const step = nextRoadStep();
+    paintPortrait(document.getElementById('rail-road'), step ? step.def : def, 0.85);
   },
 
   /* ---------------- pickers ---------------- */
@@ -119,8 +113,9 @@ const UI = {
     const grid = document.getElementById('brawler-grid');
     grid.innerHTML = '';
     for (const b of BRAWLERS) {
+      const owned = Progress.isUnlocked(b.id);
       const card = document.createElement('button');
-      card.className = 'card brawler' + (b.id === this.brawler ? ' active' : '');
+      card.className = 'card brawler' + (b.id === this.brawler ? ' active' : '') + (owned ? '' : ' locked');
       card.dataset.id = b.id;
       card.innerHTML = `
         <canvas class="portrait" width="150" height="150"></canvas>
@@ -137,6 +132,11 @@ const UI = {
         <button class="upbtn"></button>`;
       card.addEventListener('click', (e) => {
         if (e.target.closest('.upbtn')) return;      // upgrading is not picking
+        if (!Progress.isUnlocked(b.id)) {            // locked: send them to the road
+          this._buildRoad();
+          this.show('road');
+          return;
+        }
         this.brawler = b.id;
         for (const el of grid.children) el.classList.toggle('active', el.dataset.id === b.id);
         Sfx.resume();
@@ -154,8 +154,87 @@ const UI = {
         }
       });
       grid.appendChild(card);
-      paintPortrait(card.querySelector('.portrait'), b, 1);
+      paintPortrait(card.querySelector('.portrait'),
+        skinnedDef(b, Progress.equippedSkin(b.id)), 1);
       this._paintPower(card, b);
+    }
+  },
+
+  /* ---------------- Starr Road ---------------- */
+
+  _buildRoad() {
+    const list = document.getElementById('road-list');
+    list.innerHTML = '';
+    const next = nextRoadStep();
+    for (const step of roadSteps()) {
+      const b = step.def;
+      const isNext = !!next && next.id === step.id;
+      const row = document.createElement('div');
+      row.className = 'roadrow' + (step.unlocked ? ' owned' : '') + (isNext ? ' next' : '');
+      row.innerHTML = `
+        <canvas class="roadart" width="130" height="130"></canvas>
+        <div class="roadbody">
+          <div class="cname">${b.name}</div>
+          <div class="ccls" style="color:${b.color}">${CLASSES[b.cls]}</div>
+          <div class="cblurb">${b.blurb}</div>
+        </div>
+        <div class="roadact"></div>`;
+      const act = row.querySelector('.roadact');
+      if (step.unlocked) {
+        act.innerHTML = '<span class="ownedtag">OWNED</span>';
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'upbtn roadbtn';
+        btn.textContent = `${step.cost} credits`;
+        // Only the next brawler on the road can be bought — that is what makes
+        // it a road rather than a shop.
+        btn.disabled = !isNext || !Progress.canUnlock(step.id);
+        btn.addEventListener('click', () => {
+          if (Progress.unlock(step.id)) {
+            Sfx.resume();
+            Sfx.play('win');
+            this.brawler = step.id;
+            this._buildRoad();
+            this._buildBrawlers();
+            this._refreshHome();
+          }
+        });
+        act.appendChild(btn);
+      }
+      list.appendChild(row);
+      paintPortrait(row.querySelector('.roadart'), b, 0.9);
+      if (!step.unlocked) row.querySelector('.roadart').classList.add('silhouette');
+    }
+  },
+
+  /* ---------------- skins ---------------- */
+
+  _buildSkins() {
+    const def = BRAWLER_BY_ID[this.brawler];
+    document.getElementById('skins-title').textContent = `${def.name} skins`;
+    const grid = document.getElementById('skin-grid');
+    grid.innerHTML = '';
+    const worn = Progress.equippedSkin(def.id);
+    for (const skin of skinsFor(def.id)) {
+      const owned = Progress.ownsSkin(def.id, skin.id);
+      const card = document.createElement('button');
+      card.className = 'card skin' + (skin.id === worn ? ' active' : '') + (owned ? '' : ' locked');
+      card.innerHTML = `
+        <canvas class="portrait" width="150" height="150"></canvas>
+        <div class="cname">${skin.name}</div>
+        <div class="ccls">${owned ? (skin.id === worn ? 'EQUIPPED' : 'OWNED') : 'FROM STARR DROPS'}</div>`;
+      card.addEventListener('click', () => {
+        if (!owned) return;
+        Progress.equipSkin(def.id, skin.id);
+        Sfx.resume();
+        Sfx.play('tick');
+        this._buildSkins();
+        this._buildBrawlers();
+        this._refreshHome();
+      });
+      grid.appendChild(card);
+      paintPortrait(card.querySelector('.portrait'), skinnedDef(def, skin.id), 1);
+      if (!owned) card.querySelector('.portrait').classList.add('silhouette');
     }
   },
 
@@ -212,7 +291,7 @@ const UI = {
   },
 
   startMatch() {
-    for (const id of ['home', 'brawlers', 'modes', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'result', 'paused']) {
       document.getElementById(id).classList.add('hidden');
     }
     this._rollMap();

@@ -1,10 +1,10 @@
 /*
  * Auto-aim.
  *
- * One target picker shared by everything that needs one: the quick-attack
- * button, the mobile bare tap, and the aim assist that nudges manual shots.
- * It leads the target the same way the bots do, so a quick attack against a
- * moving enemy actually connects instead of trailing behind them.
+ * One target picker shared by everything that needs one: the mobile bare tap
+ * and the aim assist that nudges manual shots. It leads the target the same
+ * way the bots do, so a shot at a moving enemy actually connects instead of
+ * trailing behind them.
  */
 
 const AIM = {
@@ -16,8 +16,8 @@ const AIM = {
 const AutoAim = {
   /*
    * Best enemy to point at, or null. Prefers whoever is closest to dying,
-   * then whoever is closest, so a quick attack tends to finish rather than
-   * spread damage around.
+   * then whoever is closest, so a shot tends to finish rather than spread
+   * damage around.
    */
   target(game, from, opts) {
     const o = opts || {};

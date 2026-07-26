@@ -81,7 +81,8 @@ const Game = {
     const pool = BRAWLERS.filter((b) => b.id !== brawlerId);
     const takeDef = () => pool.splice(randInt(0, pool.length - 1), 1)[0] || pick(BRAWLERS);
 
-    this.player = new Brawler(BRAWLER_BY_ID[brawlerId] || BRAWLERS[0], this.playerTeam, false, 'You');
+    const mine = BRAWLER_BY_ID[brawlerId] || BRAWLERS[0];
+    this.player = new Brawler(skinnedDef(mine, Progress.equippedSkin(mine.id)), this.playerTeam, false, 'You');
     this.brawlers.push(this.player);
 
     for (let i = 0; i < 2; i++) {
@@ -213,13 +214,12 @@ const Game = {
 
     inp.super = Input.consumeSuper();
     inp.hyper = Input.consumeHyper();
-    inp.quick = Input.consumeQuick();
     // Charge-hook brawlers need to know the button is being held, not just fired.
     inp.holding = Input.usingTouch ? !!Input.aimStick : Input.firing;
 
     // Aim assist only nudges a shot that was already close to a target; it
     // never takes the aim away from where the player is actually pointing.
-    if (Input.autoAim && inp.fire && !inp.quick && p.attackCd <= 0 && p.ammo > 0) {
+    if (Input.autoAim && inp.fire && p.attackCd <= 0 && p.ammo > 0) {
       const sol = AutoAim.assist(this, p, inp.aim, p.def.attack);
       if (sol) {
         inp.aim = sol.angle;

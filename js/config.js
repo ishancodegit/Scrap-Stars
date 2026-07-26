@@ -74,9 +74,15 @@ const CLASSES = {
   assassin: 'Assassin',
 };
 
+/*
+ * Handles for everyone else in the lobby. They read like accounts rather than
+ * like a difficulty setting, because who you are matched against is not
+ * something the game should be narrating at you mid-fight.
+ */
 const BOT_NAMES = [
-  'Rusty', 'Nova', 'Clank', 'Vex', 'Piston', 'Zephyr',
-  'Dozer', 'Ember', 'Ratchet', 'Sable', 'Wrench', 'Onyx',
+  'Nova', 'kaz', 'Piston99', 'mochi', 'Vexed', 'sable_',
+  'ONYX', 'Ratchet', 'zeph', 'DozerX', 'Ember', 'wr3nch',
+  'lumi', 'TK_Ghost', 'quill', 'Static', 'nine', 'Rook',
 ];
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);

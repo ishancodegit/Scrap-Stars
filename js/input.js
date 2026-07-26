@@ -7,8 +7,6 @@ const Input = {
   firing: false,
   superQueued: false,
   hyperQueued: false,
-  quickQueued: false,
-  quickFlash: 0,
   autoAim: true,
   usingTouch: false,
 
@@ -30,7 +28,6 @@ const Input = {
       this.keys.add(e.key.toLowerCase());
       if (e.key === ' ') this.superQueued = true;
       if (e.key.toLowerCase() === 'q') this.hyperQueued = true;
-      if (e.key.toLowerCase() === 'e') this.quickQueued = true;
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => { this.keys.clear(); this.firing = false; });
@@ -42,10 +39,14 @@ const Input = {
     });
     canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      if (e.button === 0) this.firing = true;
-      if (e.button === 1) this.hyperQueued = true;
-      if (e.button === 2) this.superQueued = true;
-      if (e.button === 1) this.quickQueued = true;
+      if (e.button === 2) { this.superQueued = true; return; }
+      if (e.button !== 0) return;
+      // The Super and Hyper buttons are drawn on the canvas, so a mouse has to
+      // hit-test them the same way a thumb does or they are pure decoration.
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      if (this._pressButton(x, y, r.width, r.height)) return;
+      this.firing = true;
     });
     window.addEventListener('mouseup', (e) => {
       if (e.button === 0) this.firing = false;
@@ -74,12 +75,27 @@ const Input = {
       aim: { x: w - pad - r * 4.2, y: h - pad - r * 0.9, r },
       superBtn: { x: w - pad - r * 0.9, y: h - pad - r * 0.9, r: r * 0.72 },
       hyperBtn: { x: w - pad - r * 2.25, y: h - pad - r * 1.25, r: r * 0.5 },
-      quickBtn: { x: w - pad - r * 1.05, y: h - pad - r * 2.5, r: r * 0.47 },
     };
   },
 
   _hit(p, x, y, slack = 8) {
     return Math.hypot(x - p.x, y - p.y) <= p.r + slack;
+  },
+
+  /* Shared by mouse and touch: returns true when a button swallowed the press. */
+  _pressButton(x, y, w, h) {
+    const L = this.layout(w, h);
+    if (this._hit(L.superBtn, x, y)) {
+      this.superQueued = true;
+      this.superFlash = 0.3;
+      return true;
+    }
+    if (this._hit(L.hyperBtn, x, y)) {
+      this.hyperQueued = true;
+      this.hyperFlash = 0.3;
+      return true;
+    }
+    return false;
   },
 
   _touchStart(e, canvas) {
@@ -92,21 +108,7 @@ const Input = {
       const x = t.clientX - r.left, y = t.clientY - r.top;
 
       // Buttons win over the sticks they sit next to.
-      if (this._hit(L.superBtn, x, y)) {
-        this.superQueued = true;
-        this.superFlash = 0.3;
-        continue;
-      }
-      if (this._hit(L.hyperBtn, x, y)) {
-        this.hyperQueued = true;
-        this.hyperFlash = 0.3;
-        continue;
-      }
-      if (this._hit(L.quickBtn, x, y)) {
-        this.quickQueued = true;
-        this.quickFlash = 0.3;
-        continue;
-      }
+      if (this._pressButton(x, y, r.width, r.height)) continue;
 
       // Sticks float to wherever the thumb actually landed.
       if (x < r.width / 2 && !this.moveStick) {
@@ -168,12 +170,6 @@ const Input = {
   consumeSuper() {
     const q = this.superQueued;
     this.superQueued = false;
-    return q;
-  },
-
-  consumeQuick() {
-    const q = this.quickQueued;
-    this.quickQueued = false;
     return q;
   },
 

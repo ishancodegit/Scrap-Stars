@@ -2,13 +2,19 @@
  * Starr Drop opening.
  *
  * A full-screen moment rather than a line in a results table: the drop falls
- * in and bounces, you tap it, it shudders, then it bursts white and blooms
- * into rotating rays in its rarity colour with the reward card riding out of
- * the flash. Runs its own animation loop while it is on screen and hands
- * control back when the queue is empty.
+ * in and bounces, you tap it, it shudders, and then it climbs. Every drop
+ * starts Rare and each upgrade it rolled plays as its own beat — the capsule
+ * flashes, swells, and repaints in the next tier's colour — so a Legendary is
+ * watched being earned rather than simply announced. Then it bursts white and
+ * blooms into rotating rays with the reward card riding out of the flash.
  *
- * States: fall → wait → crack → burst → reward
+ * Runs its own animation loop while it is on screen and hands control back
+ * when the queue is empty.
+ *
+ * States: fall → wait → crack → climb → burst → reward
  */
+
+const CLIMB_STEP = 0.62;    // seconds per rarity upgrade beat
 
 const StarrDrop = {
   el: null,
@@ -70,11 +76,20 @@ const StarrDrop = {
     this.flash = 0;
     this.shards = [];
     this.reward = null;
+    this.chain = null;
+    this.chainAt = 0;
+    this.pop = 0;
     this.y = -this.h * 0.6;
     this.vy = 0;
     this.bounces = 0;
     this.squash = 0;
     this._setPrompt('');
+  },
+
+  /* The rarity the capsule is currently wearing while it climbs. */
+  get tierNow() {
+    if (this.chain) return this.chain[Math.min(this.chainAt, this.chain.length - 1)];
+    return this.reward ? this.reward.rarity : null;
   },
 
   _setPrompt(text) {
@@ -135,23 +150,27 @@ const StarrDrop = {
         }
       }
     } else if (this.state === 'crack') {
-      // It rattles harder and harder, then lets go.
+      // It rattles harder and harder, then starts climbing the ladder.
       if (this.t > 0.75) {
-        this.state = 'burst';
-        this.t = 0;
-        this.flash = 1;
         this.reward = Progress.openDrop(this.preferId);
-        Sfx.play(this.reward && this.reward.rarity.weight <= 6 ? 'win' : 'charged');
-        const col = this.reward ? this.reward.rarity.color : '#fff';
-        const R = this.S;
-        for (let i = 0; i < 56; i++) {
-          const a = rand(0, Math.PI * 2);
-          const sp = rand(R * 0.35, R * 1.5);
-          this.shards.push({
-            x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - R * 0.3,
-            r: rand(R * 0.006, R * 0.018), life: rand(0.5, 1.1), max: 1.1,
-            color: i % 3 ? col : '#fff', spin: rand(-8, 8), rot: 0,
-          });
+        this.chain = (this.reward && this.reward.chain) || [DROP_RARITIES[0]];
+        this.chainAt = 0;
+        this.pop = 1;
+        this.state = 'climb';
+        this.t = 0;
+        Sfx.play('tick');
+      }
+    } else if (this.state === 'climb') {
+      // One beat per rarity, then one more to admire the last one.
+      if (this.t > CLIMB_STEP) {
+        this.t = 0;
+        if (this.chainAt < this.chain.length - 1) {
+          this.chainAt++;
+          this.pop = 1;
+          this.flash = 0.55;
+          Sfx.play('charged');
+        } else {
+          this._burst();
         }
       }
     } else if (this.state === 'burst') {
@@ -161,6 +180,7 @@ const StarrDrop = {
 
     this.flash = Math.max(0, this.flash - dt * 5);
     this.squash = Math.max(0, this.squash - dt * 5);
+    this.pop = Math.max(0, this.pop - dt * 3.4);
     for (const s of this.shards) {
       s.life -= dt;
       s.vy += this.S * 2.4 * dt;
@@ -169,6 +189,26 @@ const StarrDrop = {
       s.rot += s.spin * dt;
     }
     this.shards = this.shards.filter((s) => s.life > 0);
+  },
+
+  /* The capsule gives up and the reward comes out. */
+  _burst() {
+    this.state = 'burst';
+    this.t = 0;
+    this.flash = 1;
+    const rarity = this.reward ? this.reward.rarity : DROP_RARITIES[0];
+    Sfx.play(DROP_RARITIES.indexOf(rarity) >= 3 ? 'win' : 'charged');
+    const col = rarity.color;
+    const R = this.S;
+    for (let i = 0; i < 56; i++) {
+      const a = rand(0, Math.PI * 2);
+      const sp = rand(R * 0.35, R * 1.5);
+      this.shards.push({
+        x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - R * 0.3,
+        r: rand(R * 0.006, R * 0.018), life: rand(0.5, 1.1), max: 1.1,
+        color: i % 3 ? col : '#fff', spin: rand(-8, 8), rot: 0,
+      });
+    }
   },
 
   _promptText() {
@@ -224,12 +264,15 @@ const StarrDrop = {
 
     // The capsule itself, until it bursts.
     if (this.state !== 'burst' && this.state !== 'reward') {
+      const tier = this.tierNow;
+      const capCol = tier ? tier.color : '#c084fc';
       const shake = this.state === 'crack' ? Math.sin(this.t * 46) * S * (0.008 + this.t * 0.026) : 0;
       const bob = this.state === 'wait' ? Math.sin(this.t * 3.4) * S * 0.012 : 0;
       const sq = 1 + this.squash * 0.3;
-      const r = S * 0.16;
+      // Each upgrade lands as a swell that settles rather than a hard cut.
+      const r = S * 0.16 * (1 + this.pop * 0.22);
       ctx.save();
-      ctx.translate(cx, groundY + r * 1.25);
+      ctx.translate(cx, groundY + S * 0.2);
       ctx.globalAlpha = 0.32;
       ctx.fillStyle = '#000';
       ctx.beginPath();
@@ -237,13 +280,31 @@ const StarrDrop = {
       ctx.fill();
       ctx.restore();
 
+      // A halo that grows with the tier, so climbing visibly raises the stakes.
+      if (this.state === 'climb') {
+        ctx.save();
+        ctx.globalAlpha = 0.45 + this.pop * 0.4;
+        const glow = ctx.createRadialGradient(cx, this.y, r * 0.4, cx, this.y, r * (2.4 + this.chainAt * 0.5));
+        glow.addColorStop(0, capCol);
+        glow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, this.w, this.h);
+        ctx.restore();
+      }
+
       ctx.save();
       ctx.translate(cx + shake, this.y + bob);
       ctx.scale(1 / sq, sq);
-      ctx.shadowColor = 'rgba(168,85,247,.75)';
-      ctx.shadowBlur = S * 0.06;
-      drawStarrDrop(ctx, r, '#c084fc', false);
+      ctx.shadowColor = capCol;
+      ctx.shadowBlur = S * (0.06 + this.pop * 0.1);
+      drawStarrDrop(ctx, r, capCol, false);
       ctx.restore();
+
+      // Name the tier it is currently wearing.
+      if (this.state === 'climb' && tier) {
+        this._outlined(ctx, tier.name.toUpperCase(), cx, groundY - S * 0.3,
+          Math.round(S * 0.062 * (1 + this.pop * 0.25)), tier.color, S * 0.009);
+      }
     }
 
     // Shards.
@@ -327,27 +388,35 @@ const StarrDrop = {
     ctx.font = `900 ${Math.round(S * 0.036)}px ui-rounded, system-ui, sans-serif`;
     ctx.fillText(r.rarity.name.toUpperCase(), 0, -h / 2 + S * 0.002);
 
-    // The brawler the drop paid into.
+    // The brawler the drop paid into — wearing the skin when the skin is the prize.
     if (r.brawler && typeof Sprites !== 'undefined') {
+      const shown = r.kind === 'skin' ? skinnedDef(r.brawler, r.skin.id) : r.brawler;
       ctx.save();
-      ctx.translate(0, -h * 0.1);
+      ctx.translate(0, -h * 0.08);
       const sc = (S * 0.0045);
       ctx.scale(sc, sc);
       ctx.fillStyle = 'rgba(0,0,0,.3)';
       ctx.beginPath();
       ctx.ellipse(0, 22, 27, 9, 0, 0, Math.PI * 2);
       ctx.fill();
-      Sprites.drawBrawler(ctx, { def: r.brawler, radius: 22, angle: 0.25, vx: 0, vy: 0, id: 3, x: 0, y: 0 }, 0.6);
+      Sprites.drawBrawler(ctx, { def: shown, radius: 22, angle: 0.25, vx: 0, vy: 0, id: 3, x: 0, y: 0 }, 0.6);
       ctx.restore();
     }
 
+    // What it was.
+    if (r.sub) {
+      ctx.fillStyle = 'rgba(255,255,255,.45)';
+      ctx.font = `900 ${Math.round(S * 0.024)}px ui-rounded, system-ui, sans-serif`;
+      ctx.fillText(r.sub, 0, h * 0.17);
+    }
+
     // Payout.
-    this._outlined(ctx, r.text.toUpperCase(), 0, h * 0.26, Math.round(S * 0.055), '#fff', S * 0.008);
+    this._outlined(ctx, r.text.toUpperCase(), 0, h * 0.3, Math.round(S * 0.05), '#fff', S * 0.008);
 
     if (r.brawler) {
       ctx.fillStyle = 'rgba(255,255,255,.5)';
-      ctx.font = `900 ${Math.round(S * 0.026)}px ui-rounded, system-ui, sans-serif`;
-      ctx.fillText(r.brawler.name.toUpperCase(), 0, h * 0.39);
+      ctx.font = `900 ${Math.round(S * 0.024)}px ui-rounded, system-ui, sans-serif`;
+      ctx.fillText(r.brawler.name.toUpperCase(), 0, h * 0.41);
     }
     ctx.restore();
   },

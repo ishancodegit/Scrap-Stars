@@ -71,7 +71,6 @@ const Renderer = {
 
     Input.superFlash = Math.max(0, Input.superFlash - dt);
     Input.hyperFlash = Math.max(0, Input.hyperFlash - dt);
-    Input.quickFlash = Math.max(0, Input.quickFlash - dt);
 
     ctx.save();
     ctx.translate(this.w / 2, this.h / 2);
@@ -980,16 +979,6 @@ const Renderer = {
       glyph: 'star',
       label: 'SUPER',
       flash: Input.superFlash,
-    });
-
-    this._actionButton(ctx, L.quickBtn, {
-      progress: p ? 1 - clamp(p.attackCd / (p.def.attack.cooldown || 0.35), 0, 1) : 1,
-      ready: !!p && p.ammo > 0 && p.attackCd <= 0,
-      ring: '#38bdf8',
-      glyph: 'crosshair',
-      label: 'QUICK',
-      flash: Input.quickFlash,
-      small: true,
     });
 
     if (p && p.def.hyper) {

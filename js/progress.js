@@ -1,13 +1,16 @@
 /*
- * Power levels and Starr Drops.
+ * Power levels, the collection, and Starr Drops.
  *
  * Every brawler has a power level from 1 to 11. Levelling raises health and
  * damage by a flat step each time, so the curve is readable rather than
  * exponential: level 11 is exactly 40% above level 1, not several times it.
  * Levels cost power points earned per brawler plus coins from the common pool.
  *
- * Starr Drops are the reward at the end of a match — a rarity roll that pays
- * out coins, power points, or a straight level-up.
+ * Starr Drops work the way the real ones do: every drop starts as Rare and
+ * then rolls to climb the rarity ladder, one step at a time, before it opens.
+ * The climb is the drama — a Legendary is a Rare that got lucky four times in
+ * a row, which is why the reveal animates each step instead of just naming a
+ * tier. What it pays out scales with wherever it stopped.
  */
 
 const MAX_POWER = 11;
@@ -24,12 +27,18 @@ function powerMult(level) {
   return 1 + (clamp(level, 1, MAX_POWER) - 1) * POWER_STEP;
 }
 
+/*
+ * `up` is the chance this tier upgrades to the next one. Multiplied out these
+ * land at roughly 65% Rare, 26% Super Rare, 7% Epic, 1.2% Mythic and 0.16%
+ * Legendary — rare enough that a Legendary is an event, common enough that
+ * you will actually see one.
+ */
 const DROP_RARITIES = [
-  { id: 'rare', name: 'Rare', color: '#4ade80', weight: 50 },
-  { id: 'superrare', name: 'Super Rare', color: '#38bdf8', weight: 28 },
-  { id: 'epic', name: 'Epic', color: '#c084fc', weight: 14 },
-  { id: 'mythic', name: 'Mythic', color: '#fb7185', weight: 6 },
-  { id: 'legendary', name: 'Legendary', color: '#fbbf24', weight: 2 },
+  { id: 'rare', name: 'Rare', color: '#4ade80', up: 0.35 },
+  { id: 'superrare', name: 'Super Rare', color: '#38bdf8', up: 0.25 },
+  { id: 'epic', name: 'Epic', color: '#c084fc', up: 0.15 },
+  { id: 'mythic', name: 'Mythic', color: '#fb7185', up: 0.12 },
+  { id: 'legendary', name: 'Legendary', color: '#fbbf24', up: 0 },
 ];
 
 const Progress = {
@@ -37,6 +46,10 @@ const Progress = {
   brawlers: {},        // id -> { level, points }
   drops: 0,            // unopened Starr Drops
   opened: 0,
+  credits: 0,          // Starr Road currency
+  unlocked: {},        // id -> true
+  skins: {},           // id -> { skinId: true }
+  equipped: {},        // id -> skinId
 
   load() {
     try {
@@ -46,18 +59,73 @@ const Progress = {
     for (const b of BRAWLERS) {
       if (!this.brawlers[b.id]) this.brawlers[b.id] = { level: 1, points: 0 };
     }
+    // The first brawler on the road is always yours, including for saves made
+    // before the road existed.
+    this.unlocked[ROAD_ORDER[0]] = true;
   },
 
   save() {
     try {
       localStorage.setItem('scrapstars.progress', JSON.stringify({
         coins: this.coins, brawlers: this.brawlers, drops: this.drops, opened: this.opened,
+        credits: this.credits, unlocked: this.unlocked, skins: this.skins, equipped: this.equipped,
       }));
     } catch (e) { /* nothing worth breaking play over */ }
   },
 
   of(id) { return this.brawlers[id] || (this.brawlers[id] = { level: 1, points: 0 }); },
   level(id) { return this.of(id).level; },
+
+  /* ---------------- collection ---------------- */
+
+  isUnlocked(id) { return id === ROAD_ORDER[0] || !!this.unlocked[id]; },
+  unlockedIds() { return BRAWLERS.filter((b) => this.isUnlocked(b.id)).map((b) => b.id); },
+
+  canUnlock(id) {
+    const step = nextRoadStep();
+    return !!step && step.id === id && this.credits >= step.cost;
+  },
+
+  unlockCost(id) {
+    const step = roadSteps().find((s) => s.id === id);
+    return step ? step.cost : 0;
+  },
+
+  unlock(id) {
+    if (!this.canUnlock(id)) return false;
+    this.credits -= this.unlockCost(id);
+    this.unlocked[id] = true;
+    this.save();
+    return true;
+  },
+
+  ownsSkin(brawlerId, skinId) {
+    return skinId === 'default' || !!(this.skins[brawlerId] && this.skins[brawlerId][skinId]);
+  },
+
+  grantSkin(brawlerId, skinId) {
+    if (!this.skins[brawlerId]) this.skins[brawlerId] = {};
+    this.skins[brawlerId][skinId] = true;
+  },
+
+  equippedSkin(brawlerId) {
+    const s = this.equipped[brawlerId];
+    return s && this.ownsSkin(brawlerId, s) ? s : 'default';
+  },
+
+  equipSkin(brawlerId, skinId) {
+    if (!this.ownsSkin(brawlerId, skinId)) return false;
+    this.equipped[brawlerId] = skinId;
+    this.save();
+    return true;
+  },
+
+  /* Skins for this brawler you do not own yet, rarest first. */
+  _lockedSkins(brawlerId) {
+    return skinsFor(brawlerId).filter((s) => s.id !== 'default' && !this.ownsSkin(brawlerId, s.id));
+  },
+
+  /* ---------------- power ---------------- */
 
   canUpgrade(id) {
     const b = this.of(id);
@@ -89,43 +157,85 @@ const Progress = {
     return drops;
   },
 
-  /* Roll one Starr Drop. Returns what it paid out, for the reveal. */
+  /*
+   * Roll the rarity ladder. Every drop starts Rare and climbs while the dice
+   * keep saying yes. Returns the whole chain so the reveal can play each step.
+   */
+  rollRarity() {
+    const chain = [DROP_RARITIES[0]];
+    let i = 0;
+    while (i < DROP_RARITIES.length - 1 && Math.random() < DROP_RARITIES[i].up) {
+      i++;
+      chain.push(DROP_RARITIES[i]);
+    }
+    return chain;
+  },
+
+  /* Open one Starr Drop. Returns what it paid out, for the reveal. */
   openDrop(preferId) {
     if (this.drops <= 0) return null;
     this.drops--;
     this.opened++;
 
-    const total = DROP_RARITIES.reduce((s, r) => s + r.weight, 0);
-    let roll = Math.random() * total;
-    let rarity = DROP_RARITIES[0];
-    for (const r of DROP_RARITIES) {
-      if (roll < r.weight) { rarity = r; break; }
-      roll -= r.weight;
-    }
-
+    const chain = this.rollRarity();
+    const rarity = chain[chain.length - 1];
     const tier = DROP_RARITIES.indexOf(rarity);
-    const id = preferId || pick(BRAWLERS).id;
+    const owned = this.unlockedIds();
+    const id = (preferId && this.isUnlocked(preferId)) ? preferId : pick(owned.map((x) => BRAWLER_BY_ID[x])).id;
     const b = this.of(id);
-    const reward = { rarity, brawler: BRAWLER_BY_ID[id] };
+    const reward = { rarity, chain, brawler: BRAWLER_BY_ID[id] };
 
-    // Legendary and mythic can hand over a level outright; the rest pay in
-    // points and coins that scale with how rare the drop was.
-    if (tier >= 3 && b.level < MAX_POWER) {
+    // Best prizes first, each gated on there being something left to give.
+    const lockedSkins = this._lockedSkins(id);
+    const nextStep = nextRoadStep();
+
+    if (tier >= 4 && lockedSkins.length) {
+      const skin = lockedSkins[lockedSkins.length - 1];
+      this.grantSkin(id, skin.id);
+      reward.kind = 'skin';
+      reward.skin = skin;
+      reward.text = skin.name;
+      reward.sub = 'NEW SKIN';
+    } else if (tier >= 3 && nextStep && Math.random() < 0.5) {
+      const credits = Math.round((40 + tier * 45) * rand(0.85, 1.2));
+      this.credits += credits;
+      reward.kind = 'credits';
+      reward.amount = credits;
+      reward.text = `${credits} credits`;
+      reward.sub = 'STARR ROAD';
+    } else if (tier >= 3 && b.level < MAX_POWER) {
       b.level++;
       reward.kind = 'level';
-      reward.text = `${reward.brawler.name} → Power ${b.level}`;
+      reward.text = `POWER ${b.level}`;
+      reward.sub = 'LEVEL UP';
+    } else if (tier >= 2 && lockedSkins.length && Math.random() < 0.22) {
+      const skin = lockedSkins[0];
+      this.grantSkin(id, skin.id);
+      reward.kind = 'skin';
+      reward.skin = skin;
+      reward.text = skin.name;
+      reward.sub = 'NEW SKIN';
+    } else if (Math.random() < 0.3) {
+      const credits = Math.round((14 + tier * 22) * rand(0.85, 1.2));
+      this.credits += credits;
+      reward.kind = 'credits';
+      reward.amount = credits;
+      reward.text = `${credits} credits`;
+      reward.sub = 'STARR ROAD';
     } else if (Math.random() < 0.55) {
       const points = Math.round((18 + tier * 26) * rand(0.85, 1.2));
       b.points += points;
       reward.kind = 'points';
       reward.amount = points;
       reward.text = `${points} power points`;
+      reward.sub = 'POWER POINTS';
     } else {
       const coins = Math.round((35 + tier * 70) * rand(0.85, 1.2));
       this.coins += coins;
       reward.kind = 'coins';
       reward.amount = coins;
       reward.text = `${coins} coins`;
+      reward.sub = 'COINS';
     }
 
     this.save();

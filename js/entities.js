@@ -10,9 +10,12 @@
 let _entityId = 1;
 
 /*
- * Bots are levelled to match the fight rather than to be a wall: in ranked
- * their level tracks the tier so a Master lobby is a Master lobby, and in
- * casual they mirror whatever the player brought.
+ * Opponents are levelled to match the fight rather than to be a wall: in
+ * ranked their level tracks the tier, so a Master lobby is a Master lobby.
+ *
+ * In casual they trail the player by a couple of levels instead of mirroring
+ * them. Mirroring exactly meant every upgrade you bought was handed to the
+ * other team in the same breath, so levelling up felt like it did nothing.
  */
 function opts_power(def, isBot) {
   if (typeof Game === 'undefined' || !isBot) return 1;
@@ -20,7 +23,8 @@ function opts_power(def, isBot) {
     const i = RANKS.findIndex((r) => r.id === Ranked.tier().id);
     return clamp(3 + Math.round(i * 1.35), 1, MAX_POWER);
   }
-  return Game.player ? Game.player.power : 1;
+  const mine = Game.player ? Game.player.power : 1;
+  return clamp(Math.round(mine * 0.7), 1, MAX_POWER);
 }
 
 class Brawler {
@@ -92,7 +96,7 @@ class Brawler {
     this.attackToken = 0;
     this.attackIndex = 0;     // which half of an alternating attack is next
 
-    this.input = { mx: 0, my: 0, aim: 0, aimDist: 0, fire: false, super: false, hyper: false, quick: false };
+    this.input = { mx: 0, my: 0, aim: 0, aimDist: 0, fire: false, super: false, hyper: false };
   }
 
   get superReady() { return this.charge >= this.def.superCharge; }
@@ -183,7 +187,6 @@ class Brawler {
     if (!this.stunned && !this.dash && !this.leap) {
       if (this.input.hyper && this.hyperReady && this.superReady) this.activateHyper(game);
       if (this.input.super && this.superReady) this.useSuper(game);
-      else if (this.input.quick && this.attackCd <= 0 && this.ammo > 0) this.quickAttack(game);
       // A charge-hook brawler drives its own attack off hold/release instead.
       else if (this.def.trait === 'chargeHook') { /* handled in _updateCharge */ }
       else if (this.input.fire && this.attackCd <= 0 && this.ammo > 0) {
@@ -357,11 +360,6 @@ class Brawler {
   }
 
   /*
-   * Quick attack: fire the normal attack straight at whatever auto-aim picks,
-   * with no aiming from the player at all. Same ammo, same cooldown — the only
-   * thing it skips is having to point.
-   */
-  /*
    * Nori's rod. A tap swings it in a wide arc; holding winds up a hook that
    * latches onto whoever — or whatever — it hits and reels him in. A full
    * charge carries him clean over the wall he catches.
@@ -396,19 +394,6 @@ class Brawler {
   }
 
   get chargePctHook() { return clamp(this.chargeUp / HOOK.maxCharge, 0, 1); }
-
-  quickAttack(game) {
-    const sol = AutoAim.solve(game, this, { spec: this.def.attack });
-    if (sol) {
-      this.input.aim = sol.angle;
-      this.input.aimDist = sol.dist;
-      this.lockFlash = 0.35;
-      this.lockTarget = sol.target;
-    }
-    // autoTrack re-solves the aim for each shot of a burst, so a stream
-    // weapon keeps tracking a crossing target instead of trailing behind it.
-    this.fire(game, { autoTrack: !!sol });
-  }
 
   useSuper(game) {
     let spec = this.def.super;
@@ -658,7 +643,7 @@ class Projectile {
     };
     game.addLink(o.x, o.y, tx, ty, this.color);
     game.burst(tx, ty, this.color, 8);
-    Sfx.play('quick');
+    Sfx.play('tick');
   }
 
   _detonate(game) {
