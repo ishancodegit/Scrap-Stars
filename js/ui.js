@@ -360,6 +360,9 @@ const UI = {
   /* ---------------- play with a friend ---------------- */
 
   _resetFriends() {
+    Net.diag = [];
+    const dl = document.getElementById('diag-log');
+    if (dl) dl.innerHTML = '';
     for (const id of ['host-code', 'host-reply', 'join-code', 'join-reply', 'join-room-code']) {
       const el = document.getElementById(id);
       if (el) el.value = '';
@@ -418,6 +421,12 @@ const UI = {
   },
 
   _wireFriends() {
+    Net.onDiag = (lines) => {
+      const el = document.getElementById('diag-log');
+      if (!el) return;
+      el.innerHTML = lines.map((l) => `<li>${l}</li>`).join('');
+    };
+
     Net.onStatus = (s) => {
       const text = {
         creating: 'Getting a room ready\u2026',

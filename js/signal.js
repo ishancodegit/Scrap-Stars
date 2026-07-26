@@ -22,6 +22,36 @@
  * nothing but the two players.
  */
 
+/*
+ * How two players find a route to each other.
+ *
+ * STUN is enough when at least one side is behind an ordinary home router: it
+ * discovers the public address and the two punch a hole straight through. It
+ * is not enough behind symmetric NAT, which mobile carriers and most school
+ * and office networks use — there the port changes per destination, so the
+ * address one side learns is useless to the other.
+ *
+ * That case needs a relay to sit in the middle and forward packets, which is
+ * what TURN is. Without one, roughly one pairing in five simply cannot connect
+ * however long it waits, and mobile-data to mobile-data almost never does.
+ * These are the free open relays; they are rate limited and not fast, but a
+ * relayed match beats no match.
+ */
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
+  {
+    urls: [
+      'turn:openrelay.metered.ca:80',
+      'turn:openrelay.metered.ca:443',
+      'turn:openrelay.metered.ca:443?transport=tcp',
+    ],
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+];
+
 const SIGNAL = {
   // Public brokers, tried in order. Any one of them being down or blocked on a
   // given network should not be the end of the feature.

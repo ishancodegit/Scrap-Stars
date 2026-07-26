@@ -44,6 +44,9 @@ const Net = {
   _sendAcc: 0,
   _inputAcc: 0,
   _gen: 0,
+  diag: [],
+  onDiag: null,
+  _sawTypes: new Set(),
 
   get active() { return this.role !== null; },
   get isHost() { return this.role === 'host'; },
@@ -51,6 +54,7 @@ const Net = {
 
   _set(status) {
     this.status = status;
+    this.log(status);
     if (this.onStatus) this.onStatus(status);
   },
 
@@ -64,19 +68,35 @@ const Net = {
    */
   _newPeer() {
     const gen = ++this._gen;
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:global.stun.twilio.com:3478' },
-      ],
-    });
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pc._gen = gen;
     pc.oniceconnectionstatechange = () => {
       if (this.pc !== pc) return;                 // a superseded attempt
-      const s = pc.iceConnectionState;
-      if (s === 'failed' || s === 'disconnected' || s === 'closed') this._drop();
+      const st = pc.iceConnectionState;
+      this.log('link: ' + st);
+      if (st === 'failed' || st === 'disconnected' || st === 'closed') this._drop();
+    };
+    pc.onicecandidate = (e) => {
+      if (this.pc !== pc || !e.candidate) return;
+      // Whether a relay route ever appeared is the difference between "this
+      // network is strict" and "the relay itself is unreachable".
+      const type = (e.candidate.candidate.match(/ typ (\w+)/) || [])[1];
+      if (type && !this._sawTypes.has(type)) {
+        this._sawTypes.add(type);
+        this.log('route found: ' + type);
+      }
     };
     return pc;
+  },
+
+  /*
+   * A short account of the handshake. "It doesn't work" covers half a dozen
+   * different failures and only this can tell them apart.
+   */
+  log(line) {
+    this.diag.push(line);
+    if (this.diag.length > 14) this.diag.shift();
+    if (this.onDiag) this.onDiag(this.diag);
   },
 
   /* True while `gen` is still the attempt we care about. */
@@ -187,6 +207,7 @@ const Net = {
     Rooms.onFail = (why) => { this._set('nosignal'); if (onFail) onFail(why); };
     Rooms.onReady = () => {
       if (!this._current(gen)) return;
+      this.log('room service reached');
       Rooms.publish('offer', { id: this._offerId, sdp: pc.localDescription.sdp }, true);
       this._set('waiting');
       if (onCode) onCode(room);
@@ -195,6 +216,7 @@ const Net = {
       // Room codes are short, so ignore anything not answering our own offer.
       if (!msg || msg.re !== this._offerId || this._answered || !this._current(gen)) return;
       this._answered = true;
+      this.log('friend answered');
       if (msg.name) this.guestName = String(msg.name).slice(0, 14) || 'Friend';
       try {
         await this.pc.setRemoteDescription({ type: 'answer', sdp: msg.sdp });
@@ -219,6 +241,7 @@ const Net = {
     Rooms.onMessage = async (msg) => {
       if (!msg || !msg.sdp || this._answered) return;
       this._answered = true;
+      this.log('found the room');
       this.pc = this._newPeer();
       this.pc.ondatachannel = (e) => { this.ch = e.channel; this._wireChannel(this.ch); };
       try {
@@ -238,6 +261,7 @@ const Net = {
     ch.binaryType = 'arraybuffer';
     ch.onopen = () => {
       this.connected = true;
+      this.log('data channel open');
       this._set('connected');
       // Deliberately no init here: the host has not built a match yet, and an
       // init carrying an empty roster would leave the guest with nothing to be.
@@ -268,6 +292,7 @@ const Net = {
   close() {
     this._answered = false;
     this.roomCode = null;
+    this._sawTypes = new Set();
     this._gen++;                                   // orphan anything in flight
     if (typeof Rooms !== 'undefined') Rooms.close();
     if (this.ch) {
