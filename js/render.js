@@ -25,7 +25,11 @@ const Renderer = {
     this.canvas.height = Math.round(this.h * this.dpr);
     // Fit a consistent slice of the arena. Driving this off the smaller
     // dimension means a short landscape phone sees more, not less.
-    this.scale = clamp(Math.min(this.w / 900, this.h / 540), 0.5, 1.45);
+    // Zoomed in deliberately: fitting more arena on screen made the fighters
+    // and tiles small enough to be hard to read, and you fight what is near
+    // you rather than what is across the map. The divisors are the world span
+    // kept in view, so smaller means bigger on screen.
+    this.scale = clamp(Math.min(this.w / 620, this.h / 380), 0.7, 2.4);
   },
 
   /*
@@ -752,15 +756,24 @@ const Renderer = {
     this._drawFeed(ctx, game, w);
 
     if (game.player && !game.player.alive) {
+      const watching = game.spectating();
+      ctx.save();
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(0,0,0,.45)';
-      ctx.fillRect(0, h / 2 - 60, w, 120);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 34px system-ui, sans-serif';
-      ctx.fillText('Respawning', w / 2, h / 2 - 12);
-      ctx.font = 'bold 46px system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(0,0,0,.42)';
+      this._roundRect(ctx, w / 2 - 190, h * 0.14, 380, watching ? 92 : 74, 16);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.65)';
+      ctx.font = '900 13px ui-rounded, system-ui, sans-serif';
+      ctx.fillText('RESPAWNING IN', w / 2, h * 0.14 + 24);
+      ctx.font = '900 40px ui-rounded, system-ui, sans-serif';
       ctx.fillStyle = PALETTE.accent;
-      ctx.fillText(Math.ceil(game.player.respawnTimer).toString(), w / 2, h / 2 + 30);
+      ctx.fillText(Math.ceil(game.player.respawnTimer).toString(), w / 2, h * 0.14 + 58);
+      if (watching) {
+        ctx.font = '900 12px ui-rounded, system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,.5)';
+        ctx.fillText('WATCHING ' + watching.name.toUpperCase(), w / 2, h * 0.14 + 80);
+      }
+      ctx.restore();
     }
 
     if (Input.usingTouch) {

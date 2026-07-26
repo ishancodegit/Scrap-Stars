@@ -68,6 +68,11 @@
       <canvas id="rail-skin" width="120" height="120"></canvas>
       <span class="raillabel">SKINS</span>
     </button>
+    <button id="pick-quests" class="railbtn">
+      <canvas id="rail-quests" width="120" height="120"></canvas>
+      <span class="raillabel">QUESTS</span>
+      <i id="quest-dot" class="reddot hidden"></i>
+    </button>
     <button id="pick-friends" class="railbtn">
       <canvas id="rail-friends" width="120" height="120"></canvas>
       <span class="raillabel">FRIENDS</span>
@@ -112,6 +117,18 @@
       <button id="modes-back" class="ghost">Back</button>
     </div>
     <div id="mode-list" class="modelist"></div>
+  </div>
+</div>
+
+<!-- Daily quests -->
+<div id="quests" class="overlay hidden">
+  <div class="sheet narrowish">
+    <div class="sheethead">
+      <h2>Daily quests</h2>
+      <button id="quests-back" class="ghost">Back</button>
+    </div>
+    <p class="sub roadsub">New set every day. Rewards are credits for the Recruit Track.</p>
+    <div id="quest-list" class="roadlist"></div>
   </div>
 </div>
 
@@ -261,6 +278,7 @@
 <script src="js/starrdrop.js"></script>
 <script src="js/roster.js"></script>
 <script src="js/collection.js"></script>
+<script src="js/quests.js"></script>
 <script src="js/aim.js"></script>
 <script src="js/sprites.js"></script>
 <script src="js/abilities.js"></script>

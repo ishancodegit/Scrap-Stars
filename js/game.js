@@ -212,7 +212,7 @@ const Game = {
 
     if (this.state === 'playing' && !this.paused && dt > 0) this.update(dt);
     if (this.state !== 'menu') {
-      Renderer.follow(this.player && this.player.alive ? this.player : null, dt);
+      Renderer.follow(this.spectating(), dt);
       Renderer.draw(this, dt);
     }
     requestAnimationFrame((t) => this.frame(t));
@@ -382,6 +382,23 @@ const Game = {
     if (typeof Net !== 'undefined' && Net.connected) {
       Net.send({ t: 'em', i: this.brawlers.indexOf(who), e: index });
     }
+  },
+
+  /*
+   * Who the camera watches. Dying used to freeze it on your own corpse for
+   * five seconds, which is a long time to look at nothing; it follows a living
+   * teammate instead, so you keep reading the fight you are about to rejoin.
+   */
+  spectating() {
+    const p = this.player;
+    if (!p) return null;
+    if (p.alive) { this.specTarget = null; return p; }
+    if (this.specTarget && this.specTarget.alive) return this.specTarget;
+    const mates = this.brawlers.filter((b) => b !== p && b.team === p.team && b.alive);
+    this.specTarget = mates.length
+      ? mates.reduce((a, b) => (dist(p.x, p.y, a.x, a.y) < dist(p.x, p.y, b.x, b.y) ? a : b))
+      : null;
+    return this.specTarget;
   },
 
   _nearestVisibleEnemy(from, maxDist) {
@@ -702,6 +719,12 @@ const Game = {
       ? Ranked.settle(winner === this.playerTeam, winner === -1)
       : null;
     this.dropsWon = Progress.awardMatch(winner === this.playerTeam);
+    if (typeof Quests !== 'undefined') {
+      const best = this.brawlers.reduce((a, b) =>
+        ((b.damageDealt || 0) + b.kills * 1200 - b.deaths * 300) >
+        ((a.damageDealt || 0) + a.kills * 1200 - a.deaths * 300) ? b : a);
+      Quests.recordMatch(this, winner === this.playerTeam, best === this.player);
+    }
     Sfx.play(winner === this.playerTeam ? 'win' : 'lose');
     UI.showResult(winner);
   },

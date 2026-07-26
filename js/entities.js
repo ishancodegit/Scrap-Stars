@@ -398,6 +398,7 @@ class Brawler {
   get chargePctHook() { return clamp(this.chargeUp / HOOK.maxCharge, 0, 1); }
 
   useSuper(game) {
+    this.supersLanded = (this.supersLanded || 0) + 1;
     let spec = this.def.super;
     // A live Overdrive upgrades the Super for as long as it lasts.
     if (this.hyperActive > 0 && this.def.hyper && this.def.hyper.super) {

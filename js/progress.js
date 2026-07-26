@@ -203,6 +203,7 @@ const Progress = {
     this.drops--;
     this.opened++;
 
+    if (typeof Quests !== 'undefined') Quests.bump('pods', 1);
     const chain = this.rollRarity();
     const rarity = chain[chain.length - 1];
     const tier = DROP_RARITIES.indexOf(rarity);

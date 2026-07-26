@@ -8,6 +8,7 @@ const UI = {
   init() {
     Ranked.load();
     Progress.load();
+    Quests.load();
     this._buildBrawlers();
     this._buildModes();
     this._rollMap();
@@ -27,6 +28,8 @@ const UI = {
     on('pick-skin', () => { this._buildSkins(); this.show('skins'); });
     on('skins-back', () => this.show('home'));
     on('pick-friends', () => this._openFriends());
+    on('pick-quests', () => { this._buildQuests(); this.show('quests'); });
+    on('quests-back', () => this.show('home'));
     on('friends-back', () => { Net.close(); this._resetFriends(); this.show('home'); });
     this._wireFriends();
 
@@ -45,7 +48,7 @@ const UI = {
   },
 
   show(which) {
-    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'friends', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.toggle('hidden', id !== which);
     }
     if (which === 'home') this._refreshHome();
@@ -109,6 +112,45 @@ const UI = {
     const step = nextRoadStep();
     paintPortrait(document.getElementById('rail-road'), step ? step.def : def, 0.85);
     paintFriendsIcon(document.getElementById('rail-friends'));
+    paintQuestIcon(document.getElementById('rail-quests'));
+    // A dot on the rail is the only nudge; nothing nags.
+    document.getElementById('quest-dot').classList.toggle('hidden', Quests.claimable() === 0);
+  },
+
+  _buildQuests() {
+    const list = document.getElementById('quest-list');
+    list.innerHTML = '';
+    for (const q of Quests.today()) {
+      const row = document.createElement('div');
+      row.className = 'roadrow questrow' + (q.claimed ? ' owned' : q.done ? ' next' : '');
+      row.innerHTML = `
+        <div class="qmark">${q.claimed ? '\u2713' : q.done ? '\u2605' : ''}</div>
+        <div class="roadbody">
+          <div class="cname">${q.text}</div>
+          <div class="pbar"><span style="width:${Math.round(q.have / q.goal * 100)}%"></span></div>
+          <div class="qprog">${q.have.toLocaleString()} / ${q.goal.toLocaleString()}</div>
+        </div>
+        <div class="roadact"></div>`;
+      const act = row.querySelector('.roadact');
+      if (q.claimed) {
+        act.innerHTML = '<span class="ownedtag">CLAIMED</span>';
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'upbtn roadbtn';
+        btn.textContent = `${q.reward} credits`;
+        btn.disabled = !q.done;
+        btn.addEventListener('click', () => {
+          if (Quests.claim(q.id)) {
+            Sfx.resume();
+            Sfx.play('levelup');
+            this._buildQuests();
+            this._refreshHome();
+          }
+        });
+        act.appendChild(btn);
+      }
+      list.appendChild(row);
+    }
   },
 
   /* ---------------- pickers ---------------- */
@@ -295,7 +337,7 @@ const UI = {
   },
 
   startMatch() {
-    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'friends', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.add('hidden');
     }
     this._rollMap();
@@ -475,7 +517,7 @@ const UI = {
     };
 
     Net.onInit = (init) => {
-      for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'friends', 'result', 'paused']) {
+      for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'friends', 'result', 'paused']) {
         document.getElementById(id).classList.add('hidden');
       }
       Game.startAsGuest(init);
@@ -613,6 +655,38 @@ function paintFriendsIcon(canvas) {
     ctx.fill(); ctx.stroke();
     ctx.restore();
   }
+  ctx.restore();
+}
+
+/* A scroll with a tick on it, for the Quests rail button. */
+function paintQuestIcon(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.scale(w / 150, w / 150);
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#12071f';
+  ctx.lineWidth = 6;
+  ctx.fillStyle = '#f5e6c8';
+  ctx.beginPath();
+  ctx.moveTo(-34, -44); ctx.lineTo(34, -44); ctx.lineTo(34, 44); ctx.lineTo(-34, 44);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#b9a06a';
+  ctx.lineWidth = 5;
+  for (const y of [-20, 0]) {
+    ctx.beginPath();
+    ctx.moveTo(-20, y); ctx.lineTo(20, y);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 9;
+  ctx.beginPath();
+  ctx.moveTo(-18, 22); ctx.lineTo(-4, 34); ctx.lineTo(22, 8);
+  ctx.stroke();
   ctx.restore();
 }
 
