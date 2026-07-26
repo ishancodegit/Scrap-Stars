@@ -90,6 +90,14 @@ const Game = {
       bot.ai = makeBrain();
       this.brawlers.push(bot);
     }
+    // Hosting: the first teammate slot belongs to the friend, not to a bot.
+    if (typeof Net !== 'undefined' && Net.isHost && Net.connected) {
+      const mate = this.brawlers[1];
+      mate.isBot = false;
+      mate.isRemote = true;
+      mate.ai = null;
+      mate.name = Net.guestName;
+    }
     for (let i = 0; i < 3; i++) {
       const bot = new Brawler(takeDef(), 1 - this.playerTeam, true, names.pop());
       bot.ai = makeBrain();
@@ -103,6 +111,65 @@ const Game = {
     }
 
     if (this.mode.init) this.mode.init(this);
+
+    Renderer.camX = this.player.x;
+    Renderer.camY = this.player.y;
+    this.state = 'playing';
+    Sfx.resume();
+    if (typeof Net !== 'undefined' && Net.isHost && Net.connected) Net._sendInit();
+  },
+
+  /*
+   * Join a friend's match. The guest never simulates: it rebuilds the world the
+   * host described, then does nothing but draw whatever arrives and send back
+   * what its player is pressing.
+   */
+  startAsGuest(init) {
+    if (!init || !init.line || !init.line.length) return;   // nothing to be yet
+    this.mode = MODES[init.mode] || MODES.gem;
+    this.mapDef = { name: init.map || 'Arena', style: init.style };
+    this.ranked = false;
+    this.rankResult = null;
+    for (const key of ['brawlers', 'projectiles', 'lobs', 'beams', 'summons', 'gems',
+      'areas', 'telegraphs', 'tempWalls', 'swings', 'links', 'particles', 'pulses',
+      'texts', 'feed', 'safes', 'goals']) {
+      this[key] = [];
+    }
+    this.teamScore = [0, 0];
+    this.ball = null;
+    this.lockTeam = -1;
+    this.lockTimer = 0;
+    this.time = 0;
+    this.timeLeft = init.time || this.mode.time;
+    this.paused = false;
+    this.result = null;
+
+    // The map is generated randomly, so it has to be copied rather than re-rolled.
+    GameMap.style = init.style;
+    for (let i = 0; i < GameMap.grid.length && i < init.tiles.length; i++) {
+      GameMap.grid[i] = +init.tiles[i];
+    }
+    GameMap.spawns = init.spawns.map((side) => side.map(([x, y]) => ({ x, y })));
+
+    for (const row of init.line) {
+      const base = BRAWLER_BY_ID[row.d] || BRAWLERS[0];
+      const def = Object.assign({}, base, { color: row.c, skin: row.s, hair: row.h });
+      const b = new Brawler(def, row.t, false, row.n);
+      b.power = row.p;
+      b.powerMult = powerMult(row.p);
+      b.maxHp = Math.round(base.hp * b.powerMult);
+      b.hp = b.maxHp;
+      this.brawlers.push(b);
+    }
+    this.playerTeam = this.brawlers[init.you] ? this.brawlers[init.you].team : TEAM_BLUE;
+    this.player = this.brawlers[init.you] || this.brawlers[0];
+    this.player.name = 'You';
+
+    const slot = [0, 0];
+    for (const b of this.brawlers) {
+      const sp = GameMap.spawns[b.team][slot[b.team]++ % 3];
+      b.spawnAt(sp.x, sp.y);
+    }
 
     Renderer.camX = this.player.x;
     Renderer.camY = this.player.y;
@@ -125,9 +192,21 @@ const Game = {
 
   update(dt) {
     this.time += dt;
+
+    // A guest draws the host's world instead of running its own. Only local
+    // sparkle — particles, floating numbers — advances here.
+    if (typeof Net !== 'undefined' && Net.isGuest) {
+      this._readPlayerInput();
+      Net.guestTick(dt);
+      Net.applySnapshot(dt);
+      this._updateEffects(dt);
+      return;
+    }
+
     this.timeLeft = Math.max(0, this.timeLeft - dt);
 
     this._readPlayerInput();
+    this._readRemoteInput();
 
     // Two phases on purpose. If each bot decided and acted in one pass, bots
     // later in the list would aim at positions already updated this frame while
@@ -166,6 +245,24 @@ const Game = {
     this._updateTempWalls(dt);
     if (this.mode.update) this.mode.update(this, dt);
     this._updateEffects(dt);
+    if (typeof Net !== 'undefined' && Net.isHost) Net.hostTick(dt);
+  },
+
+  /* Drive the friend's brawler from the last input packet that arrived. */
+  _readRemoteInput() {
+    if (typeof Net === 'undefined' || !Net.isHost || !Net.remoteInput) return;
+    const b = this.brawlers.find((x) => x.isRemote);
+    if (!b) return;
+    const m = Net.remoteInput;
+    const i = b.input;
+    i.mx = m.x; i.my = m.y;
+    i.aim = m.a; i.aimDist = m.d;
+    i.fire = !!m.f;
+    i.holding = !!m.o;
+    // Super and Hyper are edge-triggered, so consume them once.
+    i.super = !!m.s; i.hyper = !!m.h;
+    if (m.s) m.s = 0;
+    if (m.h) m.h = 0;
   },
 
   _readPlayerInput() {
@@ -509,6 +606,7 @@ const Game = {
     if (this.state !== 'playing') return;
     this.state = 'over';
     this.result = winner;
+    if (typeof Net !== 'undefined' && Net.isHost && Net.connected) Net.send({ t: 'end', w: winner });
     this.rankResult = this.ranked
       ? Ranked.settle(winner === this.playerTeam, winner === -1)
       : null;

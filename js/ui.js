@@ -26,6 +26,9 @@ const UI = {
     on('road-back', () => this.show('home'));
     on('pick-skin', () => { this._buildSkins(); this.show('skins'); });
     on('skins-back', () => this.show('home'));
+    on('pick-friends', () => { this._resetFriends(); this.show('friends'); });
+    on('friends-back', () => { Net.close(); this._resetFriends(); this.show('home'); });
+    this._wireFriends();
 
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
@@ -42,7 +45,7 @@ const UI = {
   },
 
   show(which) {
-    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.toggle('hidden', id !== which);
     }
     if (which === 'home') this._refreshHome();
@@ -105,6 +108,7 @@ const UI = {
     // The road icon is whoever you are saving toward.
     const step = nextRoadStep();
     paintPortrait(document.getElementById('rail-road'), step ? step.def : def, 0.85);
+    paintFriendsIcon(document.getElementById('rail-friends'));
   },
 
   /* ---------------- pickers ---------------- */
@@ -291,7 +295,7 @@ const UI = {
   },
 
   startMatch() {
-    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.add('hidden');
     }
     this._rollMap();
@@ -353,6 +357,88 @@ const UI = {
       `<tr><th>Player</th><th>Brawler</th><th>K</th><th>D</th></tr>${rows}`;
   },
 
+  /* ---------------- play with a friend ---------------- */
+
+  _resetFriends() {
+    document.getElementById('friends-pick').classList.remove('hidden');
+    document.getElementById('friends-host').classList.add('hidden');
+    document.getElementById('friends-join').classList.add('hidden');
+    for (const id of ['host-code', 'host-reply', 'join-code', 'join-reply']) {
+      document.getElementById(id).value = '';
+    }
+  },
+
+  _wireFriends() {
+    const status = (which, text) => { document.getElementById(which).textContent = text; };
+
+    Net.onStatus = (s) => {
+      const text = {
+        creating: 'Building your invite code…',
+        waiting: 'Waiting for your friend\u2019s reply code…',
+        joining: 'Reading the invite…',
+        connecting: 'Connecting…',
+        connected: 'Connected! Starting the match…',
+        failed: 'Could not connect. Check the codes and try again.',
+        lost: 'Your friend disconnected.',
+      }[s] || s;
+      status('host-status', text);
+      status('join-status', text);
+    };
+
+    // The host owns the match, so it starts it as soon as the link is up.
+    Net.onInit = (init) => {
+      this.show('home');
+      document.getElementById('home').classList.add('hidden');
+      Game.startAsGuest(init);
+    };
+
+    on('friend-host', async () => {
+      document.getElementById('friends-pick').classList.add('hidden');
+      document.getElementById('friends-host').classList.remove('hidden');
+      try {
+        document.getElementById('host-code').value = await Net.createInvite();
+      } catch (e) {
+        status('host-status', 'Could not create an invite: ' + e.message);
+      }
+    });
+
+    on('friend-join', () => {
+      document.getElementById('friends-pick').classList.add('hidden');
+      document.getElementById('friends-join').classList.remove('hidden');
+    });
+
+    on('host-copy', () => copyBox('host-code', 'host-status'));
+    on('join-copy', () => copyBox('join-reply', 'join-status'));
+
+    on('host-connect', async () => {
+      const code = document.getElementById('host-reply').value.trim();
+      if (!code) return status('host-status', 'Paste the reply code first.');
+      try {
+        await Net.acceptReply(code);
+        // Wait for the channel, then kick off the match for both sides.
+        const armed = setInterval(() => {
+          if (!Net.connected) return;
+          clearInterval(armed);
+          this.startMatch();
+        }, 120);
+        setTimeout(() => clearInterval(armed), 20000);
+      } catch (e) {
+        status('host-status', 'That reply code did not parse. Copy the whole thing.');
+      }
+    });
+
+    on('join-go', async () => {
+      const code = document.getElementById('join-code').value.trim();
+      if (!code) return status('join-status', 'Paste the invite code first.');
+      try {
+        document.getElementById('join-reply').value = await Net.joinWithInvite(code, 'Friend');
+        status('join-status', 'Send that reply code back \u2014 the match starts on their screen.');
+      } catch (e) {
+        status('join-status', 'That invite code did not parse. Copy the whole thing.');
+      }
+    });
+  },
+
   /* The bait on the result screen: how many drops are waiting, and a lid. */
   _paintDropButton() {
     const btn = document.getElementById('drop-open');
@@ -394,6 +480,55 @@ UI._paintAllPower = function () {
   const grid = document.getElementById('brawler-grid');
   for (const el of grid.children) this._paintPower(el, BRAWLER_BY_ID[el.dataset.id]);
 };
+
+/* Copy a code box to the clipboard, with a fallback for insecure origins. */
+function copyBox(boxId, statusId) {
+  const box = document.getElementById(boxId);
+  const say = (msg) => { document.getElementById(statusId).textContent = msg; };
+  if (!box.value) return say('Nothing to copy yet.');
+  box.select();
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(box.value)
+      .then(() => say('Copied. Send it to your friend.'))
+      .catch(() => say('Press Ctrl/Cmd+C to copy the selected code.'));
+  } else {
+    say('Press Ctrl/Cmd+C to copy the selected code.');
+  }
+}
+
+/* Two brawlers side by side, for the Friends rail button. */
+function paintFriendsIcon(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.save();
+  ctx.translate(w / 2, h * 0.62);
+  ctx.scale(w / 150, w / 150);
+  for (const [dx, col, flip] of [[-26, '#38bdf8', 1], [26, '#fb7185', -1]]) {
+    ctx.save();
+    ctx.translate(dx, 0);
+    ctx.scale(flip, 1);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath();
+    ctx.ellipse(0, 24, 22, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#12071f';
+    ctx.lineWidth = 5;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(-17, 20); ctx.lineTo(-20, -6); ctx.lineTo(20, -6); ctx.lineTo(17, 20);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, -26, 21, 0, Math.PI * 2);
+    ctx.fillStyle = '#f0c3a0';
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
 
 function on(id, fn) {
   const el = document.getElementById(id);

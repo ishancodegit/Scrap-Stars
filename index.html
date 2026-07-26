@@ -68,6 +68,10 @@
       <canvas id="rail-skin" width="120" height="120"></canvas>
       <span class="raillabel">SKINS</span>
     </button>
+    <button id="pick-friends" class="railbtn">
+      <canvas id="rail-friends" width="120" height="120"></canvas>
+      <span class="raillabel">FRIENDS</span>
+    </button>
   </nav>
 
   <!-- bottom bar -->
@@ -108,6 +112,75 @@
       <button id="modes-back" class="ghost">Back</button>
     </div>
     <div id="mode-list" class="modelist"></div>
+  </div>
+</div>
+
+<!-- Play with a friend -->
+<div id="friends" class="overlay hidden">
+  <div class="sheet">
+    <div class="sheethead">
+      <h2>Play with a friend</h2>
+      <button id="friends-back" class="ghost">Back</button>
+    </div>
+
+    <div id="friends-pick" class="friendpick">
+      <button id="friend-host" class="card fbig">
+        <div class="fbadge">1</div>
+        <div class="cname">HOST A MATCH</div>
+        <div class="cblurb">Create an invite code and send it to your friend. You run the match.</div>
+      </button>
+      <button id="friend-join" class="card fbig">
+        <div class="fbadge">2</div>
+        <div class="cname">JOIN A MATCH</div>
+        <div class="cblurb">Got a code from a friend? Paste it here and drop into their game.</div>
+      </button>
+    </div>
+
+    <!-- host flow -->
+    <div id="friends-host" class="fflow hidden">
+      <ol class="fsteps">
+        <li>
+          <span class="fstep">1</span>
+          <div>
+            <b>Send this invite code to your friend</b>
+            <textarea id="host-code" class="fcode" readonly rows="3"></textarea>
+            <button id="host-copy" class="upbtn fcopy">Copy invite code</button>
+          </div>
+        </li>
+        <li>
+          <span class="fstep">2</span>
+          <div>
+            <b>Paste the reply code they send back</b>
+            <textarea id="host-reply" class="fcode" rows="3" placeholder="Paste your friend's reply code here"></textarea>
+            <button id="host-connect" class="upbtn fcopy">Connect</button>
+          </div>
+        </li>
+      </ol>
+      <p id="host-status" class="fstatus">Building your invite code…</p>
+    </div>
+
+    <!-- join flow -->
+    <div id="friends-join" class="fflow hidden">
+      <ol class="fsteps">
+        <li>
+          <span class="fstep">1</span>
+          <div>
+            <b>Paste your friend's invite code</b>
+            <textarea id="join-code" class="fcode" rows="3" placeholder="Paste the invite code here"></textarea>
+            <button id="join-go" class="upbtn fcopy">Generate reply code</button>
+          </div>
+        </li>
+        <li>
+          <span class="fstep">2</span>
+          <div>
+            <b>Send this reply code back to them</b>
+            <textarea id="join-reply" class="fcode" readonly rows="3"></textarea>
+            <button id="join-copy" class="upbtn fcopy">Copy reply code</button>
+          </div>
+        </li>
+      </ol>
+      <p id="join-status" class="fstatus">Waiting for a code…</p>
+    </div>
   </div>
 </div>
 
@@ -198,6 +271,7 @@
 <script src="js/entities.js"></script>
 <script src="js/modes.js"></script>
 <script src="js/ai.js"></script>
+<script src="js/net.js"></script>
 <script src="js/input.js"></script>
 <script src="js/render.js"></script>
 <script src="js/game.js"></script>

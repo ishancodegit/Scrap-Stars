@@ -724,6 +724,71 @@ const Renderer = {
     }
 
     if (Input.usingTouch) this._drawTouchControls(ctx, w, h, game);
+    this._drawIntro(ctx, game, w, h);
+    this._drawNetBadge(ctx, w, h);
+  },
+
+  /*
+   * The first two seconds of a match name the mode and the map, then get out
+   * of the way. Without it a match just starts, with no beat to read the board.
+   */
+  _drawIntro(ctx, game, w, h) {
+    const t = game.time;
+    if (t > 2.4) return;
+    // Slide in, hold, slide out.
+    const a = t < 0.35 ? t / 0.35 : t > 2.0 ? 1 - (t - 2.0) / 0.4 : 1;
+    const slide = t < 0.35 ? (1 - a) * 90 : t > 2.0 ? (1 - a) * -90 : 0;
+    const cy = h * 0.36;
+    ctx.save();
+    ctx.globalAlpha = clamp(a, 0, 1);
+    ctx.translate(slide, 0);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = 'rgba(12,7,24,.72)';
+    this._roundRect(ctx, w / 2 - 230, cy - 52, 460, 104, 20);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.16)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#12071f';
+    ctx.lineWidth = 7;
+    ctx.font = '900 38px ui-rounded, system-ui, sans-serif';
+    ctx.strokeText(game.mode.name.toUpperCase(), w / 2, cy - 12);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(game.mode.name.toUpperCase(), w / 2, cy - 12);
+
+    ctx.font = '900 15px ui-rounded, system-ui, sans-serif';
+    ctx.fillStyle = PALETTE.accent;
+    ctx.fillText((game.mapDef ? game.mapDef.name : '').toUpperCase(), w / 2, cy + 24);
+    ctx.restore();
+  },
+
+  /* A quiet marker so you know the match is shared, and whether it is holding up. */
+  _drawNetBadge(ctx, w, h) {
+    if (typeof Net === 'undefined' || !Net.active) return;
+    const label = Net.connected
+      ? (Net.isHost ? 'HOSTING' : 'CONNECTED')
+      : 'RECONNECTING…';
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 11px ui-rounded, system-ui, sans-serif';
+    const tw = ctx.measureText(label).width + 30;
+    const x = w / 2 - tw / 2;
+    const y = h - 26;
+    ctx.fillStyle = Net.connected ? 'rgba(12,7,24,.7)' : 'rgba(120,20,20,.85)';
+    this._roundRect(ctx, x, y, tw, 20, 10);
+    ctx.fill();
+    ctx.fillStyle = Net.connected ? '#4ade80' : '#fca5a5';
+    ctx.beginPath();
+    ctx.arc(x + 12, y + 10, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.fillText(label, w / 2 + 6, y + 10);
+    ctx.restore();
   },
 
   /*
