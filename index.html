@@ -68,6 +68,10 @@
       <canvas id="rail-skin" width="120" height="120"></canvas>
       <span class="raillabel">SKINS</span>
     </button>
+    <button id="pick-settings" class="railbtn">
+      <canvas id="rail-settings" width="120" height="120"></canvas>
+      <span class="raillabel">SETTINGS</span>
+    </button>
     <button id="pick-quests" class="railbtn">
       <canvas id="rail-quests" width="120" height="120"></canvas>
       <span class="raillabel">QUESTS</span>
@@ -117,6 +121,34 @@
       <button id="modes-back" class="ghost">Back</button>
     </div>
     <div id="mode-list" class="modelist"></div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div id="settings" class="overlay hidden">
+  <div class="sheet narrowish">
+    <div class="sheethead">
+      <h2>Settings</h2>
+      <button id="settings-back" class="ghost">Back</button>
+    </div>
+
+    <div class="setblock">
+      <div class="setlabel">Camera</div>
+      <div class="setsub">How much of the arena stays on screen.</div>
+      <div id="zoom-opts" class="segrow"></div>
+    </div>
+
+    <div class="setblock">
+      <div class="setlabel">Sound</div>
+      <div class="setsub">Also toggled with <kbd>M</kbd>, or the speaker in a match.</div>
+      <div id="sound-opts" class="segrow"></div>
+    </div>
+
+    <div class="setblock">
+      <div class="setlabel">Screen effects</div>
+      <div class="setsub">Full-screen flashes and the red edge when you are hurt.</div>
+      <div id="flash-opts" class="segrow"></div>
+    </div>
   </div>
 </div>
 
@@ -271,6 +303,7 @@
 <div id="muted" class="corner-note">Sound: on (M)</div>
 
 <script src="js/config.js"></script>
+<script src="js/settings.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/map.js"></script>
 <script src="js/ranks.js"></script>

@@ -6,6 +6,7 @@ const UI = {
   map: null,
 
   init() {
+    Settings.load();
     Ranked.load();
     Progress.load();
     Quests.load();
@@ -29,6 +30,8 @@ const UI = {
     on('skins-back', () => this.show('home'));
     on('pick-friends', () => this._openFriends());
     on('pick-quests', () => { this._buildQuests(); this.show('quests'); });
+    on('pick-settings', () => { this._buildSettings(); this.show('settings'); });
+    on('settings-back', () => this.show('home'));
     on('quests-back', () => this.show('home'));
     on('friends-back', () => { Net.close(); this._resetFriends(); this.show('home'); });
     this._wireFriends();
@@ -48,7 +51,7 @@ const UI = {
   },
 
   show(which) {
-    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'friends', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.toggle('hidden', id !== which);
     }
     if (which === 'home') this._refreshHome();
@@ -113,8 +116,38 @@ const UI = {
     paintPortrait(document.getElementById('rail-road'), step ? step.def : def, 0.85);
     paintFriendsIcon(document.getElementById('rail-friends'));
     paintQuestIcon(document.getElementById('rail-quests'));
+    paintGearIcon(document.getElementById('rail-settings'));
     // A dot on the rail is the only nudge; nothing nags.
     document.getElementById('quest-dot').classList.toggle('hidden', Quests.claimable() === 0);
+  },
+
+  /* Three segmented pickers, each writing straight through to Settings. */
+  _buildSettings() {
+    const seg = (host, options, current, onPick) => {
+      const el = document.getElementById(host);
+      el.innerHTML = '';
+      for (const o of options) {
+        const btn = document.createElement('button');
+        btn.className = 'segbtn' + (o.id === current ? ' on' : '');
+        btn.innerHTML = `<b>${o.name}</b>${o.hint ? `<span>${o.hint}</span>` : ''}`;
+        btn.addEventListener('click', () => {
+          onPick(o.id);
+          Sfx.resume();
+          Sfx.play('tick');
+          this._buildSettings();
+        });
+        el.appendChild(btn);
+      }
+    };
+
+    seg('zoom-opts', ZOOM_STEPS, Settings.zoom, (id) => {
+      Settings.set('zoom', id);
+      Renderer.resize();                 // apply without needing a new match
+    });
+    seg('sound-opts', [{ id: 'on', name: 'On' }, { id: 'off', name: 'Off' }],
+        Settings.sound ? 'on' : 'off', (id) => Settings.set('sound', id === 'on'));
+    seg('flash-opts', [{ id: 'on', name: 'On' }, { id: 'off', name: 'Reduced' }],
+        Settings.flashes ? 'on' : 'off', (id) => Settings.set('flashes', id === 'on'));
   },
 
   _buildQuests() {
@@ -337,7 +370,7 @@ const UI = {
   },
 
   startMatch() {
-    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'friends', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.add('hidden');
     }
     this._rollMap();
@@ -517,7 +550,7 @@ const UI = {
     };
 
     Net.onInit = (init) => {
-      for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'friends', 'result', 'paused']) {
+      for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
         document.getElementById(id).classList.add('hidden');
       }
       Game.startAsGuest(init);
@@ -686,6 +719,39 @@ function paintQuestIcon(canvas) {
   ctx.lineWidth = 9;
   ctx.beginPath();
   ctx.moveTo(-18, 22); ctx.lineTo(-4, 34); ctx.lineTo(22, 8);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* A gear, for the Settings rail button. */
+function paintGearIcon(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  ctx.clearRect(0, 0, w, canvas.height);
+  ctx.save();
+  ctx.translate(w / 2, canvas.height / 2);
+  ctx.scale(w / 150, w / 150);
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const b = a + Math.PI / 8;
+    ctx.lineTo(Math.cos(a) * 48, Math.sin(a) * 48);
+    ctx.lineTo(Math.cos(a + 0.22) * 48, Math.sin(a + 0.22) * 48);
+    ctx.lineTo(Math.cos(b - 0.06) * 34, Math.sin(b - 0.06) * 34);
+    ctx.lineTo(Math.cos(b + 0.28) * 34, Math.sin(b + 0.28) * 34);
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fill();
+  ctx.strokeStyle = '#12071f';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, 16, 0, Math.PI * 2);
+  ctx.fillStyle = '#3a2170';
+  ctx.fill();
   ctx.stroke();
   ctx.restore();
 }

@@ -25,12 +25,10 @@ const Renderer = {
     this.canvas.height = Math.round(this.h * this.dpr);
     // Fit a consistent slice of the arena. Driving this off the smaller
     // dimension means a short landscape phone sees more, not less.
-    // The divisors are the world span kept in view, so smaller means bigger on
-    // screen. 900x540 left the fighters too small to read; 620x380 was legible
-    // but claustrophobic, closing the view down to about half the arena. This
-    // is the midpoint between the two, which keeps a fighter comfortably large
-    // without losing sight of who is walking at you.
-    this.scale = clamp(Math.min(this.w / 750, this.h / 455), 0.6, 1.9);
+    // How much world stays in view is a preference, not a constant — see
+    // settings.js. Bigger span means more arena and smaller fighters.
+    const span = (typeof Settings !== 'undefined') ? Settings.viewSpan() : { w: 820, h: 500 };
+    this.scale = clamp(Math.min(this.w / span.w, this.h / span.h), 0.45, 2.2);
   },
 
   /*
@@ -796,6 +794,7 @@ const Renderer = {
   _drawLowHp(ctx, game, w, h) {
     const p = game.player;
     if (!p || !p.alive) return;
+    if (typeof Settings !== 'undefined' && !Settings.flashes) return;
     const frac = p.hp / p.maxHp;
     if (frac > 0.4) return;
     const hurt = 1 - frac / 0.4;

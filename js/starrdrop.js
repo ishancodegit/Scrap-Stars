@@ -321,7 +321,7 @@ const StarrDrop = {
     if (this.state === 'reward' && this.reward) this._card(ctx, cx, groundY, S);
 
     // The pop itself: a white wash over the whole screen for a few frames.
-    if (this.flash > 0) {
+    if (this.flash > 0 && (typeof Settings === 'undefined' || Settings.flashes)) {
       ctx.save();
       ctx.globalAlpha = Math.min(1, this.flash) * 0.85;
       ctx.fillStyle = '#fff';
