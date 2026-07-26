@@ -65,7 +65,7 @@ class Brawler {
     this.lockFlash = 0;      // brief marker over an auto-aim target
     this.lockTarget = null;
 
-    /* Hypercharge: fills only once the Super is already available. */
+    /* Overdrive: fills only once the Super is already available. */
     this.hyperCharge = 0;
     this.hyperMax = def.hyper ? (def.hyper.charge || def.superCharge * 1.2) : Infinity;
     this.hyperActive = 0;
@@ -82,7 +82,7 @@ class Brawler {
     this.rooted = 0;
     this.pierceWallsUntil = 0;
 
-    /* Multi-shot sequences (Colt's bullet stream, El Primo's punch combo). */
+    /* Multi-shot sequences (Sixer's bullet stream, Haymaker's punch combo). */
     this.pending = [];
 
     /* Trait resources — Nori banks a fish for every attack that connects. */
@@ -397,7 +397,7 @@ class Brawler {
 
   useSuper(game) {
     let spec = this.def.super;
-    // A live Hypercharge upgrades the Super for as long as it lasts.
+    // A live Overdrive upgrades the Super for as long as it lasts.
     if (this.hyperActive > 0 && this.def.hyper && this.def.hyper.super) {
       spec = Object.assign({}, spec, this.def.hyper.super);
     }
@@ -415,7 +415,7 @@ class Brawler {
     this.hyperCharge = 0;
     this.hyperActive = HYPER.duration;
     game.pulses.push({ x: this.x, y: this.y, r: 0, max: 150, life: 0.5, color: '#facc15' });
-    game.floatText(this.x, this.y - this.radius - 30, 'HYPERCHARGE!', '#facc15', 16);
+    game.floatText(this.x, this.y - this.radius - 30, 'OVERDRIVE!', '#facc15', 16);
     Sfx.play('charged');
   }
 

@@ -1,12 +1,12 @@
 /*
- * Power levels, the collection, and Starr Drops.
+ * Power levels, the collection, and Prize Pods.
  *
  * Every brawler has a power level from 1 to 11. Levelling raises health and
  * damage by a flat step each time, so the curve is readable rather than
  * exponential: level 11 is exactly 40% above level 1, not several times it.
  * Levels cost power points earned per brawler plus coins from the common pool.
  *
- * Starr Drops work the way the real ones do: every drop starts as Rare and
+ * Prize Pods work the way the real ones do: every drop starts as Rare and
  * then rolls to climb the rarity ladder, one step at a time, before it opens.
  * The climb is the drama — a Legendary is a Rare that got lucky four times in
  * a row, which is why the reveal animates each step instead of just naming a
@@ -44,9 +44,9 @@ const DROP_RARITIES = [
 const Progress = {
   coins: 0,
   brawlers: {},        // id -> { level, points }
-  drops: 0,            // unopened Starr Drops
+  drops: 0,            // unopened Prize Pods
   opened: 0,
-  credits: 0,          // Starr Road currency
+  credits: 0,          // Recruit Track currency
   unlocked: {},        // id -> true
   skins: {},           // id -> { skinId: true }
   equipped: {},        // id -> skinId
@@ -56,6 +56,7 @@ const Progress = {
       const raw = localStorage.getItem('scrapstars.progress');
       if (raw) Object.assign(this, JSON.parse(raw));
     } catch (e) { /* first run or storage blocked */ }
+    this._migrateIds();
     for (const b of BRAWLERS) {
       if (!this.brawlers[b.id]) this.brawlers[b.id] = { level: 1, points: 0 };
     }
@@ -71,6 +72,27 @@ const Progress = {
         credits: this.credits, unlocked: this.unlocked, skins: this.skins, equipped: this.equipped,
       }));
     } catch (e) { /* nothing worth breaking play over */ }
+  },
+
+  /*
+   * The roster was renamed, so a save from before then keys everything under
+   * the old ids. Carry those forward rather than silently wiping a collection.
+   */
+  _migrateIds() {
+    const RENAMED = {
+      shelly: 'buckshot', colt: 'sixer', bull: 'ramrod', elprimo: 'haymaker',
+      rico: 'carom', barley: 'tonic', poco: 'chorus', piper: 'longshot',
+      mortis: 'shade', spike: 'thorn', nori: 'angler', kenji: 'ronin',
+      frank: 'sledge',
+    };
+    for (const [was, now] of Object.entries(RENAMED)) {
+      for (const bag of [this.brawlers, this.unlocked, this.skins, this.equipped]) {
+        if (bag && bag[was] !== undefined) {
+          if (bag[now] === undefined) bag[now] = bag[was];
+          delete bag[was];
+        }
+      }
+    }
   },
 
   of(id) { return this.brawlers[id] || (this.brawlers[id] = { level: 1, points: 0 }); },
@@ -171,7 +193,7 @@ const Progress = {
     return chain;
   },
 
-  /* Open one Starr Drop. Returns what it paid out, for the reveal. */
+  /* Open one Prize Pod. Returns what it paid out, for the reveal. */
   openDrop(preferId) {
     if (this.drops <= 0) return null;
     this.drops--;
@@ -202,7 +224,7 @@ const Progress = {
       reward.kind = 'credits';
       reward.amount = credits;
       reward.text = `${credits} credits`;
-      reward.sub = 'STARR ROAD';
+      reward.sub = 'RECRUIT TRACK';
     } else if (tier >= 3 && b.level < MAX_POWER) {
       b.level++;
       reward.kind = 'level';
@@ -221,7 +243,7 @@ const Progress = {
       reward.kind = 'credits';
       reward.amount = credits;
       reward.text = `${credits} credits`;
-      reward.sub = 'STARR ROAD';
+      reward.sub = 'RECRUIT TRACK';
     } else if (Math.random() < 0.55) {
       const points = Math.round((18 + tier * 26) * rand(0.85, 1.2));
       b.points += points;
@@ -243,7 +265,7 @@ const Progress = {
   },
 };
 
-/* Draw a Starr Drop: a rounded capsule with a seam and a star on the front. */
+/* Draw a Prize Pod: a rounded capsule with a seam and a star on the front. */
 function drawStarrDrop(ctx, r, color, open) {
   ctx.save();
   ctx.lineJoin = 'round';

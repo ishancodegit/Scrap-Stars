@@ -311,6 +311,22 @@ const Game = {
 
     inp.super = Input.consumeSuper();
     inp.hyper = Input.consumeHyper();
+
+    // A Super released from a drag goes where the drag pointed. A tapped one
+    // goes wherever you were already aiming, or at the best target if nothing
+    // was chosen — a Super is too expensive to waste on a mis-tap.
+    if (inp.super) {
+      const sa = Input.consumeSuperAim();
+      const sSpec = p.def.super;
+      if (sa) {
+        const reach = specRange(sSpec);
+        inp.aim = sa.angle;
+        inp.aimDist = 80 + sa.len * (reach - 80);
+      } else if (Input.usingTouch || Input.autoAim) {
+        const sol = AutoAim.solve(this, p, { spec: sSpec });
+        if (sol) { inp.aim = sol.angle; inp.aimDist = sol.dist; }
+      }
+    }
     // Charge-hook brawlers need to know the button is being held, not just fired.
     inp.holding = Input.usingTouch ? !!Input.aimStick : Input.firing;
 
@@ -383,7 +399,7 @@ const Game = {
       t.done = true;
       const dmg = t.damage * (t.owner.damageMult || 1);
       this.explode(t.x, t.y, t.radius, dmg, t.owner, t.color, t.spec);
-      // The centre of Kenji's X hits twice as hard as the arms.
+      // The centre of Ronin's X hits twice as hard as the arms.
       if (t.centerMult > 1) {
         this.explode(t.x, t.y, t.radius * 0.34, dmg * (t.centerMult - 1), t.owner, t.color, t.spec);
       }
@@ -480,7 +496,7 @@ const Game = {
       source.addCharge(dealt);
     }
     if (target.def.trait === 'chargeFromDamage') target.addCharge(dealt * 0.9);
-    // Kenji drinks a share of everything he lands.
+    // Ronin drinks a share of everything they land.
     if (source && source !== target && source.def && source.def.trait === 'lifesteal' &&
         source.team !== target.team && source.alive) {
       this.healTarget(source, dealt * 0.35, source);

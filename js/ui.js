@@ -26,7 +26,7 @@ const UI = {
     on('road-back', () => this.show('home'));
     on('pick-skin', () => { this._buildSkins(); this.show('skins'); });
     on('skins-back', () => this.show('home'));
-    on('pick-friends', () => { this._resetFriends(); this.show('friends'); });
+    on('pick-friends', () => this._openFriends());
     on('friends-back', () => { Net.close(); this._resetFriends(); this.show('home'); });
     this._wireFriends();
 
@@ -164,7 +164,7 @@ const UI = {
     }
   },
 
-  /* ---------------- Starr Road ---------------- */
+  /* ---------------- Recruit Track ---------------- */
 
   _buildRoad() {
     const list = document.getElementById('road-list');
@@ -226,7 +226,7 @@ const UI = {
       card.innerHTML = `
         <canvas class="portrait" width="150" height="150"></canvas>
         <div class="cname">${skin.name}</div>
-        <div class="ccls">${owned ? (skin.id === worn ? 'EQUIPPED' : 'OWNED') : 'FROM STARR DROPS'}</div>`;
+        <div class="ccls">${owned ? (skin.id === worn ? 'EQUIPPED' : 'OWNED') : 'FROM PRIZE PODS'}</div>`;
       card.addEventListener('click', () => {
         if (!owned) return;
         Progress.equipSkin(def.id, skin.id);
@@ -339,7 +339,7 @@ const UI = {
       rc.restore();
     }
 
-    // Starr Drops earned this match. The button only announces them — the
+    // Prize Pods earned this match. The button only announces them — the
     // opening itself takes over the whole screen.
     this._paintDropButton();
 
@@ -360,83 +360,136 @@ const UI = {
   /* ---------------- play with a friend ---------------- */
 
   _resetFriends() {
-    document.getElementById('friends-pick').classList.remove('hidden');
-    document.getElementById('friends-host').classList.add('hidden');
-    document.getElementById('friends-join').classList.add('hidden');
-    for (const id of ['host-code', 'host-reply', 'join-code', 'join-reply']) {
-      document.getElementById(id).value = '';
+    for (const id of ['host-code', 'host-reply', 'join-code', 'join-reply', 'join-room-code']) {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
     }
+    document.getElementById('host-room-code').textContent = '\u00b7\u00b7\u00b7\u00b7';
+    document.getElementById('manual-wrap').classList.add('hidden');
+    document.getElementById('show-manual').classList.remove('hidden');
+    this._say('');
+  },
+
+  _say(text) {
+    const el = document.getElementById('friend-status');
+    if (el) el.textContent = text;
+  },
+
+  /* Open the screen and get a room going straight away — one less thing to press. */
+  _openFriends() {
+    this._resetFriends();
+    this.show('friends');
+    this._say('Getting a room ready\u2026');
+    Net.hostRoom(
+      (code) => {
+        document.getElementById('host-room-code').textContent = code;
+        this._say('Waiting for your friend\u2026');
+        this._armWhenConnected();
+      },
+      () => {
+        document.getElementById('host-room-code').textContent = '—';
+        this._showManual('Could not reach the room service. Swap the codes below instead.');
+      },
+    );
+  },
+
+  /* The host owns the match, so it launches for both once the link is up. */
+  _armWhenConnected() {
+    clearInterval(this._armTimer);
+    this._armTimer = setInterval(() => {
+      if (!Net.connected) return;
+      clearInterval(this._armTimer);
+      if (Net.isHost) this.startMatch();
+    }, 120);
+    setTimeout(() => clearInterval(this._armTimer), 120000);
+  },
+
+  async _showManual(why) {
+    document.getElementById('manual-wrap').classList.remove('hidden');
+    document.getElementById('show-manual').classList.add('hidden');
+    if (!document.getElementById('host-code').value) {
+      try {
+        // Building an invite flips Net's own status, so restore the reason we
+        // ended up here afterwards rather than letting it be overwritten.
+        document.getElementById('host-code').value = await Net.createInvite();
+      } catch (e) { /* fall through to the message below */ }
+    }
+    this._say(why || 'Swap the codes below with your friend.');
   },
 
   _wireFriends() {
-    const status = (which, text) => { document.getElementById(which).textContent = text; };
-
     Net.onStatus = (s) => {
       const text = {
-        creating: 'Building your invite code…',
-        waiting: 'Waiting for your friend\u2019s reply code…',
-        joining: 'Reading the invite…',
-        connecting: 'Connecting…',
-        connected: 'Connected! Starting the match…',
-        failed: 'Could not connect. Check the codes and try again.',
+        creating: 'Getting a room ready\u2026',
+        waiting: 'Waiting for your friend\u2026',
+        joining: 'Looking for the room\u2026',
+        connecting: 'Connecting\u2026',
+        connected: 'Connected! Starting the match\u2026',
+        failed: 'That did not connect. Check the code and try again.',
+        nosignal: 'Could not reach the room service \u2014 swap codes by hand.',
         lost: 'Your friend disconnected.',
-      }[s] || s;
-      status('host-status', text);
-      status('join-status', text);
+      }[s];
+      if (text) this._say(text);
     };
 
-    // The host owns the match, so it starts it as soon as the link is up.
+    // A guest is told about the match rather than starting one.
     Net.onInit = (init) => {
-      this.show('home');
-      document.getElementById('home').classList.add('hidden');
+      for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'friends', 'result', 'paused']) {
+        document.getElementById(id).classList.add('hidden');
+      }
       Game.startAsGuest(init);
     };
 
-    on('friend-host', async () => {
-      document.getElementById('friends-pick').classList.add('hidden');
-      document.getElementById('friends-host').classList.remove('hidden');
-      try {
-        document.getElementById('host-code').value = await Net.createInvite();
-      } catch (e) {
-        status('host-status', 'Could not create an invite: ' + e.message);
+    on('host-copy-link', () => {
+      const code = document.getElementById('host-room-code').textContent.trim();
+      if (!code || code.length !== 4) return this._say('The room is not ready yet.');
+      const link = location.origin + location.pathname + '?room=' + code;
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(link)
+          .then(() => this._say('Link copied. Send it over \u2014 they just open it.'))
+          .catch(() => this._say(link));
+      } else {
+        this._say(link);
       }
     });
 
-    on('friend-join', () => {
-      document.getElementById('friends-pick').classList.add('hidden');
-      document.getElementById('friends-join').classList.remove('hidden');
-    });
-
-    on('host-copy', () => copyBox('host-code', 'host-status'));
-    on('join-copy', () => copyBox('join-reply', 'join-status'));
+    on('join-room-go', () => this._joinRoom(document.getElementById('join-room-code').value));
+    on('show-manual', () => this._showManual());
+    on('host-copy', () => copyBox('host-code', 'friend-status'));
+    on('join-copy', () => copyBox('join-reply', 'friend-status'));
 
     on('host-connect', async () => {
       const code = document.getElementById('host-reply').value.trim();
-      if (!code) return status('host-status', 'Paste the reply code first.');
+      if (!code) return this._say('Paste the reply code first.');
       try {
         await Net.acceptReply(code);
-        // Wait for the channel, then kick off the match for both sides.
-        const armed = setInterval(() => {
-          if (!Net.connected) return;
-          clearInterval(armed);
-          this.startMatch();
-        }, 120);
-        setTimeout(() => clearInterval(armed), 20000);
+        this._armWhenConnected();
       } catch (e) {
-        status('host-status', 'That reply code did not parse. Copy the whole thing.');
+        this._say('That reply code did not parse. Copy the whole thing.');
       }
     });
 
     on('join-go', async () => {
       const code = document.getElementById('join-code').value.trim();
-      if (!code) return status('join-status', 'Paste the invite code first.');
+      if (!code) return this._say('Paste their invite code first.');
       try {
         document.getElementById('join-reply').value = await Net.joinWithInvite(code, 'Friend');
-        status('join-status', 'Send that reply code back \u2014 the match starts on their screen.');
+        this._say('Send that reply code back \u2014 the match starts on their screen.');
       } catch (e) {
-        status('join-status', 'That invite code did not parse. Copy the whole thing.');
+        this._say('That invite code did not parse. Copy the whole thing.');
       }
     });
+  },
+
+  _joinRoom(raw) {
+    const code = String(raw || '').trim().toUpperCase();
+    if (code.length !== 4) return this._say('Room codes are four characters.');
+    this._resetFriends();
+    this.show('friends');
+    document.getElementById('host-room-code').textContent = code;
+    this._say('Looking for room ' + code + '\u2026');
+    Net.joinRoom(code, 'Friend', () =>
+      this._showManual('Could not reach the room service. Swap the codes below instead.'));
   },
 
   /* The bait on the result screen: how many drops are waiting, and a lid. */
@@ -446,7 +499,7 @@ const UI = {
     btn.classList.toggle('hidden', n <= 0);
     if (n <= 0) return;
     document.getElementById('drop-count').textContent =
-      `OPEN ${n} STARR DROP${n === 1 ? '' : 'S'}`;
+      `OPEN ${n} PRIZE POD${n === 1 ? '' : 'S'}`;
     const cv = document.getElementById('drop-canvas');
     const c = cv.getContext('2d');
     c.clearRect(0, 0, cv.width, cv.height);
@@ -631,6 +684,12 @@ function paintModeIcon(canvas, mode) {
   ctx.restore();
 }
 
+/* An invite link drops you straight into your friend's room. */
+function joinFromUrl() {
+  const code = new URLSearchParams(location.search).get('room');
+  if (code && code.trim().length === 4) UI._joinRoom(code);
+}
+
 window.addEventListener('load', () => {
   const canvas = document.getElementById('game');
   Renderer.init(canvas);
@@ -639,4 +698,5 @@ window.addEventListener('load', () => {
   UI.init();
   Game._last = performance.now();
   requestAnimationFrame((t) => Game.frame(t));
+  joinFromUrl();
 });

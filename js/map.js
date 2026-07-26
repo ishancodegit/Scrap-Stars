@@ -269,7 +269,7 @@ function moveAndCollide(body, dx, dy) {
 
 
 /*
- * Arena flavours. Each named map below picks one of these, so Brawl Ball gets
+ * Arena flavours. Each named map below picks one of these, so Slam Ball gets
  * open pitches you can actually run the ball down, and Heist gets dense cover
  * to sneak through.
  */

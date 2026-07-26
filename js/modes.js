@@ -16,9 +16,9 @@
 
 const MODES = {
 
-  /* ---------------- Gem Grab ---------------- */
+  /* ---------------- Crystal Rush ---------------- */
   gem: {
-    id: 'gem', name: 'Gem Grab', tag: '3v3', time: 180, icon: 'gem',
+    id: 'gem', name: 'Crystal Rush', tag: '3v3', time: 180, icon: 'gem',
     blurb: 'Collect gems from the mine. Hold ten for fifteen seconds to win.',
     init(g) {
       g.gemTimer = 1.2;
@@ -93,7 +93,7 @@ const MODES = {
 
   /* ---------------- Bounty ---------------- */
   bounty: {
-    id: 'bounty', name: 'Bounty', tag: '3v3', time: 120, icon: 'star',
+    id: 'bounty', name: 'Headhunt', tag: '3v3', time: 120, icon: 'star',
     blurb: 'Every kill is worth a star, and stars stack on whoever is winning.',
     init(g) {
       for (const b of g.brawlers) b.stars = 0;
@@ -127,7 +127,7 @@ const MODES = {
 
   /* ---------------- Heist ---------------- */
   heist: {
-    id: 'heist', name: 'Heist', tag: '3v3', time: 150, icon: 'safe',
+    id: 'heist', name: 'Vault Raid', tag: '3v3', time: 150, icon: 'safe',
     blurb: 'Crack the enemy safe before they crack yours.',
     init(g) {
       g.safes = [];
@@ -179,7 +179,7 @@ const MODES = {
 
   /* ---------------- Knockout ---------------- */
   knockout: {
-    id: 'knockout', name: 'Knockout', tag: '3v3', time: 120, icon: 'skull',
+    id: 'knockout', name: 'Last Stand', tag: '3v3', time: 120, icon: 'skull',
     blurb: 'No respawns. Wipe the other team twice to take the match.',
     init(g) {
       g.noRespawn = true;
@@ -238,9 +238,9 @@ const MODES = {
     },
   },
 
-  /* ---------------- Brawl Ball ---------------- */
+  /* ---------------- Slam Ball ---------------- */
   brawlball: {
-    id: 'brawlball', name: 'Brawl Ball', tag: '3v3', time: 150, icon: 'ball',
+    id: 'brawlball', name: 'Slam Ball', tag: '3v3', time: 150, icon: 'ball',
     blurb: 'Carry or kick the ball into their goal. First to two.',
     init(g) {
       g.teamScore = [0, 0];

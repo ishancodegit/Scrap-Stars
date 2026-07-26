@@ -43,6 +43,7 @@ const Net = {
 
   _sendAcc: 0,
   _inputAcc: 0,
+  _gen: 0,
 
   get active() { return this.role !== null; },
   get isHost() { return this.role === 'host'; },
@@ -55,19 +56,31 @@ const Net = {
 
   /* ---------------- signalling ---------------- */
 
+  /*
+   * Every attempt gets a generation number. Tearing down a peer fires its own
+   * close events, and without this the dying connection's handlers would drop
+   * the one that replaced it — which is exactly what happens when a player
+   * switches from a room code to the manual exchange.
+   */
   _newPeer() {
+    const gen = ++this._gen;
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:global.stun.twilio.com:3478' },
       ],
     });
+    pc._gen = gen;
     pc.oniceconnectionstatechange = () => {
+      if (this.pc !== pc) return;                 // a superseded attempt
       const s = pc.iceConnectionState;
       if (s === 'failed' || s === 'disconnected' || s === 'closed') this._drop();
     };
     return pc;
   },
+
+  /* True while `gen` is still the attempt we care about. */
+  _current(gen) { return this._gen === gen; },
 
   /* Wait until every candidate is in the local description. */
   _gathered(pc) {
@@ -111,14 +124,16 @@ const Net = {
     this.close();
     this.role = 'host';
     this._set('creating');
-    this.pc = this._newPeer();
-    this.ch = this.pc.createDataChannel('play', { ordered: false, maxRetransmits: 0 });
+    const pc = this.pc = this._newPeer();
+    const gen = pc._gen;
+    this.ch = pc.createDataChannel('play', { ordered: false, maxRetransmits: 0 });
     this._wireChannel(this.ch);
-    const offer = await this.pc.createOffer();
-    await this.pc.setLocalDescription(offer);
-    await this._gathered(this.pc);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await this._gathered(pc);
+    if (!this._current(gen)) throw new Error('superseded');
     this._set('waiting');
-    return this._pack({ v: 1, d: this.pc.localDescription.sdp });
+    return this._pack({ v: 1, d: pc.localDescription.sdp });
   },
 
   /* Host step 2: take the friend's reply. */
@@ -143,6 +158,80 @@ const Net = {
     await this._gathered(this.pc);
     this._set('connecting');
     return this._pack({ v: 1, d: this.pc.localDescription.sdp, name: name || 'Friend' });
+  },
+
+  /* ---------------- room codes ---------------- */
+
+  /*
+   * Host with a four-character room code. The offer is published retained, so
+   * a friend who types the code a minute later still finds it waiting.
+   */
+  async hostRoom(onCode, onFail) {
+    this.close();
+    this.role = 'host';
+    this._set('creating');
+    this.pc = this._newPeer();
+    this.ch = this.pc.createDataChannel('play', { ordered: false, maxRetransmits: 0 });
+    this._wireChannel(this.ch);
+    const pc = this.pc;
+    const gen = pc._gen;
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await this._gathered(pc);
+    if (!this._current(gen)) return;               // the player moved on
+
+    const room = Rooms.newCode();
+    this.roomCode = room;
+    this._offerId = Math.random().toString(36).slice(2, 10);
+
+    Rooms.onFail = (why) => { this._set('nosignal'); if (onFail) onFail(why); };
+    Rooms.onReady = () => {
+      if (!this._current(gen)) return;
+      Rooms.publish('offer', { id: this._offerId, sdp: pc.localDescription.sdp }, true);
+      this._set('waiting');
+      if (onCode) onCode(room);
+    };
+    Rooms.onMessage = async (msg) => {
+      // Room codes are short, so ignore anything not answering our own offer.
+      if (!msg || msg.re !== this._offerId || this._answered || !this._current(gen)) return;
+      this._answered = true;
+      if (msg.name) this.guestName = String(msg.name).slice(0, 14) || 'Friend';
+      try {
+        await this.pc.setRemoteDescription({ type: 'answer', sdp: msg.sdp });
+        this._set('connecting');
+        Rooms.clearRetained('offer');
+        setTimeout(() => Rooms.close(), 2000);
+      } catch (e) { this._set('failed'); }
+    };
+    Rooms.connect(room, 'answer');
+  },
+
+  /* Join by code: read the retained offer, answer it, done. */
+  joinRoom(code, name, onFail) {
+    this.close();
+    this.role = 'guest';
+    this._set('joining');
+    const room = String(code || '').trim().toUpperCase();
+    this.roomCode = room;
+
+    Rooms.onFail = (why) => { this._set('nosignal'); if (onFail) onFail(why); };
+    Rooms.onReady = () => this._set('joining');
+    Rooms.onMessage = async (msg) => {
+      if (!msg || !msg.sdp || this._answered) return;
+      this._answered = true;
+      this.pc = this._newPeer();
+      this.pc.ondatachannel = (e) => { this.ch = e.channel; this._wireChannel(this.ch); };
+      try {
+        await this.pc.setRemoteDescription({ type: 'offer', sdp: msg.sdp });
+        const answer = await this.pc.createAnswer();
+        await this.pc.setLocalDescription(answer);
+        await this._gathered(this.pc);
+        Rooms.publish('answer', { re: msg.id, sdp: this.pc.localDescription.sdp, name: name || 'Friend' }, false);
+        this._set('connecting');
+        setTimeout(() => Rooms.close(), 2000);
+      } catch (e) { this._set('failed'); }
+    };
+    Rooms.connect(room, 'offer');
   },
 
   _wireChannel(ch) {
@@ -177,8 +266,19 @@ const Net = {
   },
 
   close() {
-    if (this.ch) { try { this.ch.close(); } catch (e) { /* already gone */ } }
-    if (this.pc) { try { this.pc.close(); } catch (e) { /* already gone */ } }
+    this._answered = false;
+    this.roomCode = null;
+    this._gen++;                                   // orphan anything in flight
+    if (typeof Rooms !== 'undefined') Rooms.close();
+    if (this.ch) {
+      this.ch.onopen = this.ch.onclose = this.ch.onmessage = null;
+      try { this.ch.close(); } catch (e) { /* already gone */ }
+    }
+    if (this.pc) {
+      this.pc.oniceconnectionstatechange = null;
+      this.pc.ondatachannel = null;
+      try { this.pc.close(); } catch (e) { /* already gone */ }
+    }
     this.ch = null;
     this.pc = null;
     this.role = null;

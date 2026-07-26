@@ -1,5 +1,5 @@
 /*
- * Starr Drop opening.
+ * Prize Pod opening.
  *
  * A full-screen moment rather than a line in a results table: the drop falls
  * in and bounces, you tap it, it shudders, and then it climbs. Every drop

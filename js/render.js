@@ -92,7 +92,9 @@ const Renderer = {
     this._drawPlates(ctx, game);
     this._drawLock(ctx, game);
     this._drawEffects(ctx, game);
-    if (Input.usingTouch) this._drawAimIndicator(ctx, game);
+    if (Input.usingTouch) this._drawAimIndicator(ctx, game, Input.aimStick, game.player && game.player.def.attack);
+    // The Super preview shows on desktop too — you can drag its button with a mouse.
+    if (game.player) this._drawAimIndicator(ctx, game, Input.superStick, game.player.def.super, true);
 
     ctx.restore();
 
@@ -213,7 +215,7 @@ const Renderer = {
   },
 
   _drawObjectives(ctx, game) {
-    // Brawl Ball goals.
+    // Slam Ball goals.
     for (const go of (game.goals || [])) {
       ctx.save();
       ctx.globalAlpha = 0.85;
@@ -998,7 +1000,7 @@ const Renderer = {
       ctx.font = 'bold 9px system-ui, sans-serif';
       ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(255,255,255,.35)';
-      ctx.fillText('HYPER', hbX, hy - 6);
+      ctx.fillText('OVER', hbX, hy - 6);
       ctx.textAlign = 'right';
       ctx.fillStyle = p.hyperReady ? '#fb923c' : 'rgba(255,255,255,.32)';
       ctx.fillText(p.hyperActive > 0 ? `${p.def.hyper.name.toUpperCase()} ACTIVE`
@@ -1052,7 +1054,7 @@ const Renderer = {
         ready: p.hyperReady,
         ring: '#fb923c',
         glyph: 'bolt',
-        label: 'HYPER',
+        label: 'OVER',
         flash: Input.hyperFlash,
         small: true,
       });
@@ -1185,22 +1187,21 @@ const Renderer = {
    * While the attack stick is held, show where the shot is going: a cone for
    * direct fire, a landing circle for anything lobbed or placed.
    */
-  _drawAimIndicator(ctx, game) {
+  _drawAimIndicator(ctx, game, stick, spec, isSuper) {
     const p = game.player;
-    if (!p || !p.alive || !Input.aimStick) return;
-    const v = Input.stickVector(Input.aimStick);
+    if (!p || !p.alive || !stick || !spec) return;
+    const v = Input.stickVector(stick, stick.r || 70);
     if (v.len < 0.15) return;
 
-    const spec = p.def.attack;
     const angle = Math.atan2(v.y, v.x);
     const reach = specRange(spec);
     const placed = spec.emit === 'lob' || spec.emit === 'area' || spec.emit === 'delayedArea';
 
     ctx.save();
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = p.def.color;
+    ctx.globalAlpha = isSuper ? 0.42 : 0.3;
+    ctx.fillStyle = isSuper ? '#facc15' : p.def.color;
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = isSuper ? 3 : 2;
 
     if (placed) {
       const d = 80 + v.len * (reach - 80);

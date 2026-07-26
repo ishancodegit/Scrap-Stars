@@ -15,6 +15,10 @@ const Input = {
   aimStick: null,
   superTap: false,
   superFlash: 0,
+  // Dragging off the Super button aims it; a plain tap fires it where you
+  // already point. Same gesture with a thumb or a mouse.
+  superStick: null,
+  superAim: null,
   hyperFlash: 0,
   aimReleased: false,
   releaseAim: null,
@@ -36,20 +40,26 @@ const Input = {
       const r = canvas.getBoundingClientRect();
       this.mouseX = e.clientX - r.left;
       this.mouseY = e.clientY - r.top;
+      if (this.superStick && this.superStick.id === 'mouse') {
+        this.superStick.x = this.mouseX;
+        this.superStick.y = this.mouseY;
+      }
     });
     canvas.addEventListener('mousedown', (e) => {
       e.preventDefault();
       if (e.button === 2) { this.superQueued = true; return; }
       if (e.button !== 0) return;
-      // The Super and Hyper buttons are drawn on the canvas, so a mouse has to
-      // hit-test them the same way a thumb does or they are pure decoration.
+      // The Super and Overdrive buttons are drawn on the canvas, so a mouse has
+      // to hit-test them the same way a thumb does or they are pure decoration.
       const r = canvas.getBoundingClientRect();
       const x = e.clientX - r.left, y = e.clientY - r.top;
-      if (this._pressButton(x, y, r.width, r.height)) return;
+      if (this._pressButton(x, y, r.width, r.height, 'mouse')) return;
       this.firing = true;
     });
     window.addEventListener('mouseup', (e) => {
-      if (e.button === 0) this.firing = false;
+      if (e.button !== 0) return;
+      if (this.superStick && this.superStick.id === 'mouse') this._releaseSuper();
+      this.firing = false;
     });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -82,11 +92,15 @@ const Input = {
     return Math.hypot(x - p.x, y - p.y) <= p.r + slack;
   },
 
-  /* Shared by mouse and touch: returns true when a button swallowed the press. */
-  _pressButton(x, y, w, h) {
+  /*
+   * Shared by mouse and touch: returns true when a button swallowed the press.
+   * The Super does not fire here — it arms an aiming stick and goes off on
+   * release, so a drag can point it and a tap still fires straight away.
+   */
+  _pressButton(x, y, w, h, id) {
     const L = this.layout(w, h);
     if (this._hit(L.superBtn, x, y)) {
-      this.superQueued = true;
+      this.superStick = { id, ox: x, oy: y, x, y, r: L.r };
       this.superFlash = 0.3;
       return true;
     }
@@ -96,6 +110,22 @@ const Input = {
       return true;
     }
     return false;
+  },
+
+  /* Let go of the Super: a real drag aims it, a tap just fires it. */
+  _releaseSuper() {
+    const st = this.superStick;
+    this.superStick = null;
+    if (!st) return;
+    const v = this.stickVector(st, st.r || 70);
+    this.superAim = v.len > 0.15 ? { angle: Math.atan2(v.y, v.x), len: v.len } : null;
+    this.superQueued = true;
+  },
+
+  consumeSuperAim() {
+    const a = this.superAim;
+    this.superAim = null;
+    return a;
   },
 
   _touchStart(e, canvas) {
@@ -108,7 +138,7 @@ const Input = {
       const x = t.clientX - r.left, y = t.clientY - r.top;
 
       // Buttons win over the sticks they sit next to.
-      if (this._pressButton(x, y, r.width, r.height)) continue;
+      if (this._pressButton(x, y, r.width, r.height, t.identifier)) continue;
 
       // Sticks float to wherever the thumb actually landed.
       if (x < r.width / 2 && !this.moveStick) {
@@ -126,12 +156,14 @@ const Input = {
       const x = t.clientX - r.left, y = t.clientY - r.top;
       if (this.moveStick && t.identifier === this.moveStick.id) { this.moveStick.x = x; this.moveStick.y = y; }
       if (this.aimStick && t.identifier === this.aimStick.id) { this.aimStick.x = x; this.aimStick.y = y; }
+      if (this.superStick && t.identifier === this.superStick.id) { this.superStick.x = x; this.superStick.y = y; }
     }
   },
 
   _touchEnd(e) {
     e.preventDefault();
     for (const t of e.changedTouches) {
+      if (this.superStick && t.identifier === this.superStick.id) this._releaseSuper();
       if (this.moveStick && t.identifier === this.moveStick.id) this.moveStick = null;
       if (this.aimStick && t.identifier === this.aimStick.id) {
         // Releasing is what fires: a drag shoots where you aimed, a tap

@@ -54,7 +54,7 @@
   <div class="stage">
     <h1 class="logo"><span>SCRAP</span><em>STARS</em></h1>
     <canvas id="home-portrait" class="hero" width="360" height="360"></canvas>
-    <div id="home-brawler-name" class="heroname">Shelly</div>
+    <div id="home-brawler-name" class="heroname">Buckshot</div>
     <div id="home-brawler-class" class="heroclass">Damage Dealer</div>
   </div>
 
@@ -62,7 +62,7 @@
   <nav class="rail right">
     <button id="pick-road" class="railbtn">
       <canvas id="rail-road" width="120" height="120"></canvas>
-      <span class="raillabel">STARR ROAD</span>
+      <span class="raillabel">RECRUIT TRACK</span>
     </button>
     <button id="pick-skin" class="railbtn">
       <canvas id="rail-skin" width="120" height="120"></canvas>
@@ -79,7 +79,7 @@
     <button id="mode-card" class="modecard">
       <canvas id="home-mode-icon" width="110" height="110"></canvas>
       <div class="modebody">
-        <div id="home-mode-name" class="modename">Gem Grab</div>
+        <div id="home-mode-name" class="modename">Crystal Rush</div>
         <div id="home-map-name" class="mapname">Hard Rock Mine</div>
       </div>
       <span id="mode-tag" class="modetag">3v3</span>
@@ -117,27 +117,31 @@
 
 <!-- Play with a friend -->
 <div id="friends" class="overlay hidden">
-  <div class="sheet">
+  <div class="sheet narrowish">
     <div class="sheethead">
       <h2>Play with a friend</h2>
       <button id="friends-back" class="ghost">Back</button>
     </div>
 
-    <div id="friends-pick" class="friendpick">
-      <button id="friend-host" class="card fbig">
-        <div class="fbadge">1</div>
-        <div class="cname">HOST A MATCH</div>
-        <div class="cblurb">Create an invite code and send it to your friend. You run the match.</div>
-      </button>
-      <button id="friend-join" class="card fbig">
-        <div class="fbadge">2</div>
-        <div class="cname">JOIN A MATCH</div>
-        <div class="cblurb">Got a code from a friend? Paste it here and drop into their game.</div>
-      </button>
+    <div class="roombox">
+      <div class="roomlabel">Your room code</div>
+      <div id="host-room-code" class="roomcode">····</div>
+      <button id="host-copy-link" class="upbtn fcopy">Copy invite link</button>
+      <div class="roomhint">Send the link. Your friend opens it and the match starts — nothing else to do.</div>
     </div>
 
-    <!-- host flow -->
-    <div id="friends-host" class="fflow hidden">
+    <div class="ordiv"><span>or join a friend</span></div>
+
+    <div class="joinrow">
+      <input id="join-room-code" class="roominput" maxlength="4" autocomplete="off"
+             autocapitalize="characters" spellcheck="false" placeholder="CODE" />
+      <button id="join-room-go" class="play small">JOIN</button>
+    </div>
+
+    <p id="friend-status" class="fstatus">Getting a room ready…</p>
+    <button id="show-manual" class="linkbtn">Trouble connecting? Swap codes by hand</button>
+
+    <div id="manual-wrap" class="fflow hidden">
       <ol class="fsteps">
         <li>
           <span class="fstep">1</span>
@@ -151,47 +155,42 @@
           <span class="fstep">2</span>
           <div>
             <b>Paste the reply code they send back</b>
-            <textarea id="host-reply" class="fcode" rows="3" placeholder="Paste your friend's reply code here"></textarea>
+            <textarea id="host-reply" class="fcode" rows="3" placeholder="Paste their reply code"></textarea>
             <button id="host-connect" class="upbtn fcopy">Connect</button>
           </div>
         </li>
       </ol>
-      <p id="host-status" class="fstatus">Building your invite code…</p>
-    </div>
-
-    <!-- join flow -->
-    <div id="friends-join" class="fflow hidden">
+      <div class="ordiv"><span>or, if they sent you an invite code</span></div>
       <ol class="fsteps">
         <li>
           <span class="fstep">1</span>
           <div>
-            <b>Paste your friend's invite code</b>
-            <textarea id="join-code" class="fcode" rows="3" placeholder="Paste the invite code here"></textarea>
+            <b>Paste their invite code</b>
+            <textarea id="join-code" class="fcode" rows="3" placeholder="Paste their invite code"></textarea>
             <button id="join-go" class="upbtn fcopy">Generate reply code</button>
           </div>
         </li>
         <li>
           <span class="fstep">2</span>
           <div>
-            <b>Send this reply code back to them</b>
+            <b>Send this reply code back</b>
             <textarea id="join-reply" class="fcode" readonly rows="3"></textarea>
             <button id="join-copy" class="upbtn fcopy">Copy reply code</button>
           </div>
         </li>
       </ol>
-      <p id="join-status" class="fstatus">Waiting for a code…</p>
     </div>
   </div>
 </div>
 
-<!-- Starr Road -->
+<!-- Recruit Track -->
 <div id="road" class="overlay hidden">
   <div class="sheet">
     <div class="sheethead">
-      <h2>Starr Road</h2>
+      <h2>Recruit Track</h2>
       <button id="road-back" class="ghost">Back</button>
     </div>
-    <p class="sub roadsub">Unlock the next brawler with credits from Starr Drops.</p>
+    <p class="sub roadsub">Unlock the next brawler with credits from Prize Pods.</p>
     <div id="road-list" class="roadlist"></div>
   </div>
 </div>
@@ -214,7 +213,7 @@
     <p id="result-sub" class="sub"></p>
     <button id="drop-open" class="dropbtn hidden">
       <canvas id="drop-canvas" width="120" height="120"></canvas>
-      <span id="drop-count">OPEN 1 STARR DROP</span>
+      <span id="drop-count">OPEN 1 PRIZE POD</span>
     </button>
 
     <div id="rank-result" class="rankresult hidden">
@@ -249,7 +248,7 @@
   </div>
 </div>
 
-<!-- Starr Drop opening -->
+<!-- Prize Pod opening -->
 <div id="starrdrop" class="dropstage hidden">
   <canvas id="drop-stage"></canvas>
   <div id="drop-prompt" class="dropprompt"></div>
@@ -271,6 +270,7 @@
 <script src="js/entities.js"></script>
 <script src="js/modes.js"></script>
 <script src="js/ai.js"></script>
+<script src="js/signal.js"></script>
 <script src="js/net.js"></script>
 <script src="js/input.js"></script>
 <script src="js/render.js"></script>

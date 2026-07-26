@@ -176,7 +176,7 @@ const Sprites = {
 /* Per-brawler heads and flourishes. Drawn in local space, facing right. */
 
 const ART = {
-  shelly(ctx, d, R) {
+  buckshot(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
     // Swept-back hair with a shaved side.
@@ -188,7 +188,7 @@ const ART = {
     ellPath(ctx, -R * 0.72, hy + R * 0.1, R * 0.2, R * 0.34, 0.3);
     fillInk(ctx, d.hair, 2);
   },
-  colt(ctx, d, R) {
+  sixer(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
     // Cowboy hat: brim then crown.
@@ -198,7 +198,7 @@ const ART = {
       [R * 0.38, hy - R * 1.2], [R * 0.5, hy - R * 0.66]]);
     fillInk(ctx, '#1e40af', 2.5);
   },
-  bull(ctx, d, R) {
+  ramrod(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
     // Mohawk plus a beard.
@@ -212,7 +212,7 @@ const ART = {
     ctx.arc(R * 0.05, hy + R * 0.34, R * 0.55, 0, Math.PI);
     fillInk(ctx, d.hair, 2.5);
   },
-  elprimo(ctx, d, R) {
+  haymaker(ctx, d, R) {
     const hy = -R * 0.72;
     // Luchador mask instead of a face.
     circlePath(ctx, 0, hy, R * 0.8);
@@ -227,7 +227,7 @@ const ART = {
     circlePath(ctx, R * 0.2, hy, R * 0.08);
     ctx.fillStyle = INK; ctx.fill();
   },
-  rico(ctx, d, R) {
+  carom(ctx, d, R) {
     const hy = -R * 0.72;
     // Robot: rounded shell, visor, antenna.
     circlePath(ctx, 0, hy, R * 0.8);
@@ -242,7 +242,7 @@ const ART = {
     circlePath(ctx, 0, hy - R * 1.32, R * 0.16);
     fillInk(ctx, d.color, 2);
   },
-  barley(ctx, d, R) {
+  tonic(ctx, d, R) {
     const hy = -R * 0.72;
     circlePath(ctx, 0, hy, R * 0.78);
     fillInk(ctx, '#94a3b8', 3);
@@ -257,7 +257,7 @@ const ART = {
     shape(ctx, [[-R * 0.2, R * 0.02], [R * 0.2, R * 0.02], [0, R * 0.2]]);
     fillInk(ctx, '#ef4444', 2);
   },
-  poco(ctx, d, R) {
+  chorus(ctx, d, R) {
     const hy = -R * 0.72;
     // Skull face under a sombrero.
     circlePath(ctx, 0, hy, R * 0.76);
@@ -275,7 +275,7 @@ const ART = {
     ellPath(ctx, 0, hy - R * 0.9, R * 0.55, R * 0.34);
     fillInk(ctx, '#fbbf24', 2.5);
   },
-  piper(ctx, d, R) {
+  longshot(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
     // Wide sun hat with a ribbon.
@@ -286,7 +286,7 @@ const ART = {
     shape(ctx, [[-R * 0.6, hy - R * 0.62], [R * 0.6, hy - R * 0.62]], false);
     ctx.strokeStyle = '#db2777'; ctx.lineWidth = 3; ctx.stroke();
   },
-  mortis(ctx, d, R) {
+  shade(ctx, d, R) {
     Sprites._head(ctx, d, R, { skin: '#e6ecf5' });
     const hy = -R * 0.72;
     // Slicked-back widow's peak.
@@ -300,7 +300,7 @@ const ART = {
     shape(ctx, [[-R * 0.7, -R * 0.1], [0, R * 0.3], [R * 0.7, -R * 0.1]]);
     fillInk(ctx, '#111827', 2.5);
   },
-  spike(ctx, d, R) {
+  thorn(ctx, d, R) {
     const hy = -R * 0.7;
     // Cactus body: spikes radiating off a round head.
     for (let i = 0; i < 10; i++) {
@@ -329,7 +329,7 @@ const ART = {
       fillInk(ctx, '#fb7185', 1.5);
     }
   },
-  frank(ctx, d, R) {
+  sledge(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
     // Flat-top hair and the bolts.
@@ -344,7 +344,7 @@ const ART = {
     shape(ctx, [[-R * 0.3, hy + R * 0.4], [R * 0.34, hy + R * 0.4]], false);
     ink(ctx, 2);
   },
-  kenji(ctx, d, R) {
+  ronin(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
     // Topknot and a headband.
@@ -361,7 +361,7 @@ const ART = {
       [-R * 1.15, hy + R * 0.36], [-R * 0.78, hy + R * 0.02]]);
     fillInk(ctx, '#e11d48', 2);
   },
-  nori(ctx, d, R) {
+  angler(ctx, d, R) {
     Sprites._head(ctx, d, R);
     const hy = -R * 0.72;
     // Bowl cut and a bucket hat.
@@ -377,43 +377,43 @@ const ART = {
 
 /* Weapons, drawn along +x from the shoulder. */
 const WEAPON = {
-  shelly(ctx, d, R) {
+  buckshot(ctx, d, R) {
     shape(ctx, [[0, -R * 0.16], [R * 1.35, -R * 0.2], [R * 1.35, R * 0.14], [0, R * 0.18]]);
     fillInk(ctx, '#7c3f2b', 2.5);
     shape(ctx, [[R * 0.5, -R * 0.22], [R * 1.5, -R * 0.24], [R * 1.5, R * 0.06], [R * 0.5, R * 0.08]]);
     fillInk(ctx, '#64748b', 2.5);
   },
-  colt(ctx, d, R) {
+  sixer(ctx, d, R) {
     shape(ctx, [[0, -R * 0.14], [R * 1.05, -R * 0.16], [R * 1.05, R * 0.08], [0, R * 0.14]]);
     fillInk(ctx, '#cbd5e1', 2.5);
     shape(ctx, [[R * 0.1, R * 0.12], [R * 0.34, R * 0.12], [R * 0.28, R * 0.5], [R * 0.06, R * 0.5]]);
     fillInk(ctx, '#78350f', 2);
   },
-  bull(ctx, d, R) {
+  ramrod(ctx, d, R) {
     shape(ctx, [[0, -R * 0.2], [R * 1.2, -R * 0.26], [R * 1.2, R * 0.2], [0, R * 0.24]]);
     fillInk(ctx, '#44403c', 3);
     ellPath(ctx, R * 1.2, -R * 0.04, R * 0.14, R * 0.24);
     fillInk(ctx, '#78716c', 2);
   },
-  elprimo(ctx, d, R) {
+  haymaker(ctx, d, R) {
     circlePath(ctx, R * 0.85, 0, R * 0.42);
     fillInk(ctx, d.color, 3);
     circlePath(ctx, R * 0.85, 0, R * 0.2);
     fillInk(ctx, '#fbbf24', 2);
   },
-  rico(ctx, d, R) {
+  carom(ctx, d, R) {
     shape(ctx, [[0, -R * 0.16], [R * 1.3, -R * 0.2], [R * 1.3, R * 0.12], [0, R * 0.16]]);
     fillInk(ctx, '#e2e8f0', 2.5);
     circlePath(ctx, R * 1.3, -R * 0.04, R * 0.13);
     fillInk(ctx, '#a78bfa', 2);
   },
-  barley(ctx, d, R) {
+  tonic(ctx, d, R) {
     shape(ctx, [[R * 0.2, -R * 0.3], [R * 0.62, -R * 0.3], [R * 0.62, R * 0.34], [R * 0.2, R * 0.34]]);
     fillInk(ctx, '#16a34a', 2.5);
     shape(ctx, [[R * 0.62, -R * 0.12], [R * 1.0, -R * 0.1], [R * 1.0, R * 0.12], [R * 0.62, R * 0.14]]);
     fillInk(ctx, '#16a34a', 2);
   },
-  poco(ctx, d, R) {
+  chorus(ctx, d, R) {
     ellPath(ctx, R * 0.55, R * 0.1, R * 0.62, R * 0.44);
     fillInk(ctx, '#b45309', 2.5);
     circlePath(ctx, R * 0.62, R * 0.1, R * 0.16);
@@ -421,24 +421,24 @@ const WEAPON = {
     shape(ctx, [[R * 1.1, R * 0.06], [R * 1.75, R * 0.0]], false);
     ink(ctx, 4);
   },
-  piper(ctx, d, R) {
+  longshot(ctx, d, R) {
     shape(ctx, [[0, -R * 0.08], [R * 1.5, -R * 0.12], [R * 1.5, R * 0.06], [0, R * 0.1]]);
     fillInk(ctx, '#e879b9', 2.5);
     ctx.beginPath();
     ctx.arc(R * 1.5, -R * 0.03, R * 0.34, -Math.PI / 2, Math.PI / 2);
     fillInk(ctx, '#f9a8d4', 2.5);
   },
-  mortis(ctx, d, R) {
+  shade(ctx, d, R) {
     shape(ctx, [[0, 0], [R * 1.15, -R * 0.1]], false);
     ink(ctx, 4);
     shape(ctx, [[R * 1.1, -R * 0.36], [R * 1.55, -R * 0.3], [R * 1.5, R * 0.24], [R * 1.05, R * 0.16]]);
     fillInk(ctx, '#cbd5e1', 2.5);
   },
-  spike(ctx, d, R) {
+  thorn(ctx, d, R) {
     circlePath(ctx, R * 0.7, 0, R * 0.26);
     fillInk(ctx, d.hair, 2.5);
   },
-  frank(ctx, d, R) {
+  sledge(ctx, d, R) {
     // Big two-handed hammer.
     shape(ctx, [[0, R * 0.04], [R * 1.3, -R * 0.16]], false);
     ink(ctx, 6);
@@ -450,7 +450,7 @@ const WEAPON = {
     ctx.lineWidth = 3;
     ctx.stroke();
   },
-  kenji(ctx, d, R) {
+  ronin(ctx, d, R) {
     // Katana: long blade with a small guard.
     shape(ctx, [[R * 0.2, -R * 0.06], [R * 1.85, -R * 0.22],
       [R * 1.95, -R * 0.02], [R * 0.2, R * 0.12]]);
@@ -461,7 +461,7 @@ const WEAPON = {
     shape(ctx, [[-R * 0.35, R * 0.04], [R * 0.12, R * 0.02]], false);
     ink(ctx, 5);
   },
-  nori(ctx, d, R) {
+  angler(ctx, d, R) {
     shape(ctx, [[0, 0], [R * 1.7, -R * 0.5]], false);
     ink(ctx, 3.5);
     shape(ctx, [[R * 1.7, -R * 0.5], [R * 1.95, -R * 0.05]], false);

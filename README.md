@@ -4,7 +4,7 @@ A 3v3 top-down arena brawler that runs in the browser. No build step, no
 dependencies, no image or audio files — every character, prop and sound is
 generated in code. Open `index.html` and play.
 
-**13 brawlers · 5 modes · a ranked ladder from Bronze to Master · power levels and Starr Drops.**
+**13 brawlers · 5 modes · a ranked ladder from Bronze to Master · power levels and Prize Pods.**
 
 ## Progression
 
@@ -13,7 +13,7 @@ health and damage, so level 11 is exactly **40% above level 1** — a real edge,
 not a different game. Levels cost power points earned by that brawler plus
 coins from the shared pool.
 
-**Starr Drops** are the payout at the end of a match: always one for a win, a
+**Prize Pods** are the payout at the end of a match: always one for a win, a
 coin flip for a loss. Each rolls a rarity — Rare 50%, Super Rare 28%, Epic 14%,
 Mythic 6%, Legendary 2% — and pays out coins, power points, or at Mythic and
 above a level outright. Open them on the result screen.
@@ -46,14 +46,14 @@ Master, losses cost 80% of a win, and the ladder persists in local storage.
 
 | Mode | Length | How you win |
 |---|---|---|
-| **Gem Grab** | 3:00 | Collect gems from the mine. Hold ten as a team for fifteen seconds. |
-| **Brawl Ball** | 2:30 | Carry or kick the ball into their goal. First to two. |
+| **Crystal Rush** | 3:00 | Collect gems from the mine. Hold ten as a team for fifteen seconds. |
+| **Slam Ball** | 2:30 | Carry or kick the ball into their goal. First to two. |
 | **Bounty** | 2:00 | Every kill is worth a star, and stars stack on whoever is winning. |
 | **Heist** | 2:30 | Crack the enemy safe before they crack yours. |
 | **Knockout** | 2:00 | No respawns. Wipe the other team twice. |
 
 Each mode has three named maps with their own layout style — open pitches for
-Brawl Ball, dense cover for Heist, lanes for Bounty — rolled per match and
+Slam Ball, dense cover for Heist, lanes for Bounty — rolled per match and
 shown on the home screen and in the battle HUD.
 
 ## Controls
@@ -64,7 +64,7 @@ shown on the home screen and in the battle HUD.
 | Mouse | aim · click to shoot |
 | `E` / middle-click | **quick attack** — fires at the best target, no aiming |
 | `Space` / right-click | Super |
-| `Q` | Hypercharge |
+| `Q` | Overdrive |
 | `T` | toggle aim assist |
 | `P` pause · `M` mute | |
 
@@ -73,7 +73,7 @@ shown on the home screen and in the battle HUD.
 Landscape, twin-stick. Left thumb moves, right thumb aims — **drag to aim,
 release to fire**. A bare tap, or the **QUICK** button, fires at whatever
 auto-aim picks. The Super is the gold-ringed disc in the corner (the ring is
-its charge), Hypercharge and Quick sit beside it. Ammo shows under your own
+its charge), Overdrive and Quick sit beside it. Ammo shows under your own
 nameplate. Portrait gets a rotate prompt.
 
 ## Auto-aim
@@ -116,7 +116,7 @@ for free.
 ## The brawlers
 
 Twelve, deliberately — each one is the only thing in the game that does what it
-does, and each has an attack, a Super and a Hypercharge.
+does, and each has an attack, a Super and a Overdrive.
 
 **Shelly** shotgun cone · **Colt** a line of six bullets · **Bull** point-blank
 barrels and a wall-smashing charge · **El Primo** four-punch combo and an elbow
@@ -138,7 +138,7 @@ Two of them have a mechanic rather than just a weapon:
   His Super lobs a fish and brings an **X** down where it lands, with the
   centre of the X taking double damage.
 
-A Hypercharge fills only once the Super is already up, then grants speed,
+A Overdrive fills only once the Super is already up, then grants speed,
 damage and shield for six seconds *and* upgrades that brawler's Super.
 
 ## No screen shake
@@ -171,7 +171,7 @@ css/style.css     styling
 js/config.js      tuning constants, movement values, palette, helpers
 js/map.js         arena generation, collision, line of sight, flow fields
 js/ranks.js       ranked tiers, Elo, and the bot skill each tier implies
-js/progress.js    power levels, upgrade costs, Starr Drops
+js/progress.js    power levels, upgrade costs, Prize Pods
 js/roster.js      the thirteen brawlers, as data
 js/sprites.js     all character and prop art
 js/abilities.js   the ability engine — turns kit data into things happening
