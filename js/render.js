@@ -25,11 +25,12 @@ const Renderer = {
     this.canvas.height = Math.round(this.h * this.dpr);
     // Fit a consistent slice of the arena. Driving this off the smaller
     // dimension means a short landscape phone sees more, not less.
-    // Zoomed in deliberately: fitting more arena on screen made the fighters
-    // and tiles small enough to be hard to read, and you fight what is near
-    // you rather than what is across the map. The divisors are the world span
-    // kept in view, so smaller means bigger on screen.
-    this.scale = clamp(Math.min(this.w / 620, this.h / 380), 0.7, 2.4);
+    // The divisors are the world span kept in view, so smaller means bigger on
+    // screen. 900x540 left the fighters too small to read; 620x380 was legible
+    // but claustrophobic, closing the view down to about half the arena. This
+    // is the midpoint between the two, which keeps a fighter comfortably large
+    // without losing sight of who is walking at you.
+    this.scale = clamp(Math.min(this.w / 750, this.h / 455), 0.6, 1.9);
   },
 
   /*
