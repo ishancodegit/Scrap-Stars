@@ -41,7 +41,33 @@ const UI = {
     on('tut-skip', () => Tutorial.close());
     on('quests-back', () => this.show('home'));
     on('friends-back', () => { Net.close(); this._resetFriends(); this.show('home'); });
+    // Audio cannot start before a gesture, and the menu theme should not have
+    // to wait for the first button that happens to remember to resume it.
+    const wake = () => { Sfx.resume(); if (typeof Music !== 'undefined') Music.play(Music.current || 'menu'); };
+    window.addEventListener('pointerdown', wake, { once: true });
+    window.addEventListener('keydown', wake, { once: true });
+
     this._wireFriends();
+
+    // A controller with nothing focused still has to be able to start a match
+    // and back out of a screen, the same two things Enter and Escape do.
+    document.addEventListener('padconfirm', () => {
+      if (!document.getElementById('tutorial').classList.contains('hidden')) { Tutorial.next(); return; }
+      const open = (id) => !document.getElementById(id).classList.contains('hidden');
+      if (open('home') || open('result')) this.startMatch();
+      else if (open('paused')) this.togglePause(false);
+    });
+    document.addEventListener('padback', () => {
+      if (!document.getElementById('tutorial').classList.contains('hidden')) { Tutorial.close(); return; }
+      if (Game.state === 'playing') { this.togglePause(); return; }
+      for (const id of ['brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends']) {
+        if (!document.getElementById(id).classList.contains('hidden')) {
+          if (id === 'friends' && typeof Net !== 'undefined') Net.close();
+          this.show('home');
+          return;
+        }
+      }
+    });
 
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
@@ -83,9 +109,13 @@ const UI = {
     if (Game.state !== 'playing') return;
     Game.paused = force === undefined ? !Game.paused : force;
     document.getElementById('paused').classList.toggle('hidden', !Game.paused);
+    if (typeof Music !== 'undefined') Music.dim(Game.paused);
   },
 
   leaveMatch() {
+    // Quitting from the pause sheet has to lift the pause dim with it, or the
+    // menu theme stays quiet for the rest of the session.
+    if (typeof Music !== 'undefined') Music.dim(false);
     Game.paused = false;
     Game.state = 'menu';
     if (typeof Net !== 'undefined' && Net.active) Net.close();
@@ -104,6 +134,9 @@ const UI = {
     // leaving a match left the finished board sitting behind the menus.
     document.getElementById('game').classList.toggle('hidden', !overMatch);
     if (overMatch) Backdrop.stop(); else Backdrop.start();
+    // Menus get the menu theme, including the ones sitting over a finished
+    // match — the fight is over, so the fight music should be too.
+    if (typeof Music !== 'undefined') Music.play('menu');
 
     for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused', 'tutorial']) {
       document.getElementById(id).classList.toggle('hidden', id !== which);
@@ -173,6 +206,12 @@ const UI = {
     paintGearIcon(document.getElementById('rail-settings'));
     // A dot on the rail is the only nudge; nothing nags.
     document.getElementById('quest-dot').classList.toggle('hidden', Quests.claimable() === 0);
+
+    // Once a controller has been touched, stop telling people about the keys
+    // they are not using.
+    const onPad = typeof Pad !== 'undefined' && Pad.active;
+    document.getElementById('key-keys').classList.toggle('hidden', onPad);
+    document.getElementById('pad-keys').classList.toggle('hidden', !onPad);
   },
 
   /* Three segmented pickers, each writing straight through to Settings. */
@@ -200,6 +239,8 @@ const UI = {
     });
     seg('sound-opts', [{ id: 'on', name: 'On' }, { id: 'off', name: 'Off' }],
         Settings.sound ? 'on' : 'off', (id) => Settings.set('sound', id === 'on'));
+    seg('music-opts', [{ id: 'on', name: 'On' }, { id: 'off', name: 'Off' }],
+        Settings.music ? 'on' : 'off', (id) => Settings.set('music', id === 'on'));
     seg('flash-opts', [{ id: 'on', name: 'On' }, { id: 'off', name: 'Reduced' }],
         Settings.flashes ? 'on' : 'off', (id) => Settings.set('flashes', id === 'on'));
   },
@@ -261,6 +302,10 @@ const UI = {
           <span><i style="background:#60a5fa"></i>${Math.round(specRange(b.attack))}</span>
         </div>
         <div class="ctip">${b.tip}</div>
+        <div class="cgadget">
+          <b>GADGET · ${b.gadget.name}</b>
+          <span>${b.gadget.blurb}</span>
+        </div>
         <div class="plevel"><span class="pnum"></span><span class="pbar"><span></span></span></div>
         <div class="mastery"><i class="mbadge"></i><span class="mbar"><i></i></span><b class="mnum"></b></div>
         <button class="upbtn"></button>
@@ -452,6 +497,7 @@ const UI = {
 
   startMatch() {
     Backdrop.stop();
+    if (typeof Music !== 'undefined') { Music.setTension(0); Music.play('battle'); }
     document.getElementById('game').classList.remove('hidden');
     for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused', 'tutorial']) {
       document.getElementById(id).classList.add('hidden');

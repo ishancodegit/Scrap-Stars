@@ -19,6 +19,7 @@ const VIEW_BASE = { w: 820, h: 500 };
 const Settings = {
   zoom: 'wide',            // the complaint was claustrophobia, so start wide
   sound: true,
+  music: true,             // the score, switchable apart from the effects
   flashes: true,           // screen flashes and the low-health vignette
 
   load() {
@@ -33,7 +34,7 @@ const Settings = {
   save() {
     try {
       localStorage.setItem('scrapstars.settings', JSON.stringify({
-        zoom: this.zoom, sound: this.sound, flashes: this.flashes,
+        zoom: this.zoom, sound: this.sound, music: this.music, flashes: this.flashes,
       }));
     } catch (e) { /* nothing worth breaking play over */ }
   },
@@ -49,6 +50,12 @@ const Settings = {
   set(key, value) {
     this[key] = value;
     if (key === 'sound' && typeof Sfx !== 'undefined') Sfx.muted = !value;
+    // Turning the score back on should be audible immediately, not at the next
+    // screen change — so re-announce whatever is currently meant to be playing.
+    if (key === 'music' && typeof Music !== 'undefined') {
+      if (value) { const w = Music.current; Music.current = null; Music.play(w || 'menu'); }
+      else Music.stop(true);
+    }
     this.save();
   },
 };

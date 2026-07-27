@@ -7,6 +7,8 @@ const Input = {
   firing: false,
   superQueued: false,
   hyperQueued: false,
+  gadgetQueued: false,
+  gadgetFlash: 0,
   autoAim: true,
   usingTouch: false,
 
@@ -35,6 +37,7 @@ const Input = {
       this.keys.add(e.key.toLowerCase());
       if (e.key === ' ') this.superQueued = true;
       if (e.key.toLowerCase() === 'q') this.hyperQueued = true;
+      if (e.key.toLowerCase() === 'e') this.gadgetQueued = true;
       const emote = EMOTES.findIndex((x) => x.key === e.key);
       if (emote >= 0) this.emoteQueued = emote;
     });
@@ -90,6 +93,9 @@ const Input = {
       aim: { x: w - pad - r * 4.2, y: h - pad - r * 0.9, r },
       superBtn: { x: w - pad - r * 0.9, y: h - pad - r * 0.9, r: r * 0.72 },
       hyperBtn: { x: w - pad - r * 2.25, y: h - pad - r * 1.25, r: r * 0.5 },
+      // Third in the column, above Overdrive: the two are pressed in the same
+      // moments and a thumb should not have to travel between them.
+      gadgetBtn: { x: w - pad - r * 2.25, y: h - pad - r * 2.45, r: r * 0.44 },
       // Inboard of the move stick along the bottom edge, so it never fights
       // the stick for space and never runs off the side on a short screen.
       emoteBtn: { x: pad + r * 2.5, y: h - pad - r * 0.45, r: Math.max(17, r * 0.36) },
@@ -170,6 +176,11 @@ const Input = {
       this.hyperFlash = 0.3;
       return true;
     }
+    if (this._hit(L.gadgetBtn, x, y)) {
+      this.gadgetQueued = true;
+      this.gadgetFlash = 0.3;
+      return true;
+    }
     return false;
   },
 
@@ -246,8 +257,11 @@ const Input = {
     return { x: (dx / len) * n, y: (dy / len) * n, len: n };
   },
 
-  /* Movement direction from WASD/arrows or the left stick. */
+  /* Movement direction from WASD/arrows, a thumb stick, or a controller. */
   moveVector() {
+    if (typeof Pad !== 'undefined' && (Pad.move.x || Pad.move.y)) {
+      return { x: Pad.move.x, y: Pad.move.y };
+    }
     if (this.moveStick) {
       const v = this.stickVector(this.moveStick);
       return { x: v.x, y: v.y };
@@ -281,6 +295,12 @@ const Input = {
   consumeHyper() {
     const q = this.hyperQueued;
     this.hyperQueued = false;
+    return q;
+  },
+
+  consumeGadget() {
+    const q = this.gadgetQueued;
+    this.gadgetQueued = false;
     return q;
   },
 

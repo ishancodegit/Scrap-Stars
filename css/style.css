@@ -374,6 +374,14 @@ h2.draw { color: var(--gold); }
 .ccls { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; font-weight: 900; }
 .cblurb { font-size: 11.5px; color: var(--muted); line-height: 1.45; margin-top: 5px; }
 .ctip { font-size: 10.5px; color: #9d8bcc; line-height: 1.45; margin-top: 5px; font-style: italic; }
+.cgadget {
+  margin-top: 7px; padding: 6px 8px; width: 100%;
+  border-radius: 9px; border: 2px solid var(--edge);
+  background: rgba(45, 212, 191, .08);
+  display: grid; gap: 2px; text-align: left;
+}
+.cgadget b { font-size: 9.5px; letter-spacing: .1em; color: #5eead4; }
+.cgadget span { font-size: 10.5px; color: var(--muted); line-height: 1.4; }
 .cmaps { font-size: 10.5px; color: var(--green); font-weight: 800; margin-top: 5px; }
 .cstats { display: flex; gap: 10px; margin-top: 7px; font-size: 11px; font-weight: 800; color: var(--muted); }
 .cstats span { display: inline-flex; align-items: center; gap: 5px; }
@@ -621,9 +629,18 @@ tr.enemy td:first-child { color: #ffb3c1; }
   86%, 100% { transform: translateX(120%); }
 }
 
-/* Keyboard focus has to be visible on every control, not just the ones I styled. */
+/*
+ * Keyboard focus has to be visible on every control, not just the ones I
+ * styled. A controller moves focus programmatically, which the browser does
+ * not count as a "visible" interaction, so :focus is matched too once a pad
+ * has been used — otherwise pad navigation is invisible.
+ */
+body.usingpad .railbtn:focus, body.usingpad .card:focus, body.usingpad .play:focus,
+body.usingpad .ghost:focus, body.usingpad .modecard:focus, body.usingpad .upbtn:focus,
+body.usingpad .trybtn:focus, body.usingpad .segbtn:focus, body.usingpad .dropbtn:focus,
 .railbtn:focus-visible, .card:focus-visible, .play:focus-visible,
 .ghost:focus-visible, .modecard:focus-visible, .upbtn:focus-visible,
+.trybtn:focus-visible, .segbtn:focus-visible,
 .dropbtn:focus-visible, .roadrow button:focus-visible {
   outline: 3px solid var(--sky);
   outline-offset: 3px;

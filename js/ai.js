@@ -167,6 +167,8 @@ function updateBot(bot, game, dt) {
     }
   }
 
+  inp.gadget = bot.gadgetReady && wantsGadget(bot, game, target, targetDist);
+
   if (canShoot) {
     if (bot.hyperReady && bot.superReady) inp.hyper = true;
     if (bot.superReady && Math.random() < cfg.superChance) {
@@ -248,6 +250,38 @@ function updateBot(bot, game, dt) {
     const m = Math.hypot(inp.mx, inp.my);
     if (m > 0.05) inp.aim = Math.atan2(inp.my, inp.mx);
   }
+}
+
+/*
+ * When a bot reaches for its gadget. Read off what the gadget actually does
+ * rather than off its owner's name, so the roster can grow without this
+ * needing a new branch each time: a heal is for when you are hurt, a shield
+ * for when someone is on you, a piece of damage for when someone is in range.
+ *
+ * Deliberately not optimal. A bot that always used its gadget at the perfect
+ * moment would read as a bot; these hesitate, and sometimes waste one.
+ */
+function wantsGadget(bot, game, target, targetDist) {
+  const g = bot.def.gadget;
+  if (!g) return false;
+  const spec = g.spec;
+  const hpFrac = bot.hp / bot.maxHp;
+  const near = targetDist != null ? targetDist : Infinity;
+  const reach = specRange(spec);
+
+  let want = false;
+  if (spec.heal || spec.teamHeal) want = hpFrac < 0.55;
+  else if (spec.shield) want = hpFrac < 0.7 && near < 420;
+  else if (spec.invis) want = hpFrac < 0.4;
+  else if (spec.ammo) want = bot.ammo === 0;
+  else if (spec.knockback || spec.pull) want = !!target && near < reach * 0.9;
+  else if (spec.slow) want = !!target && near < reach;
+  else want = !!target && near < reach * 0.95;
+
+  // Hold the last charge back a little, and never fire the moment it is legal.
+  if (!want) return false;
+  if (bot.gadgetUses === 1 && hpFrac > 0.5 && Math.random() < 0.5) return false;
+  return Math.random() < 0.06;
 }
 
 function decideSuper(bot, game, target, targetDist) {

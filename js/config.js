@@ -41,6 +41,15 @@ const HYPER = {
   chargeMult: 1.4,
 };
 
+/*
+ * Gadgets: a hard-limited active per fighter rather than a second meter.
+ * Charges refill on respawn, so they are spent inside a fight instead of
+ * hoarded for the whole match, and the cooldown stops all three going off in
+ * one panicked second.
+ */
+const GADGET_USES = 3;
+const GADGET_COOLDOWN = 2.5;
+
 const STATUS_TICK = 0.25;
 
 /* Nori's rod: tap to swing, hold to wind up the hook. */

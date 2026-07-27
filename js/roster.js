@@ -24,6 +24,11 @@ const BRAWLERS = [
       emit: 'projectiles', count: 9, pattern: 'fan', spread: 0.60, damage: 460,
       speed: 840, range: 400, radius: 8, knockback: 300, breakWalls: true, speedJitter: true,
     },
+    gadget: {
+      name: 'Fast Shells', icon: 'reload',
+      blurb: 'Slams a full clip in and moves you off the reload.',
+      spec: { emit: 'self', ammo: true, haste: { duration: 2.2, mult: 1.25 }, color: '#f2596b' },
+    },
     hyper: { name: 'Shell Shock', charge: 4200, super: { count: 12, damage: 520, knockback: 460 } },
   },
   {
@@ -39,6 +44,15 @@ const BRAWLERS = [
     super: {
       emit: 'projectiles', count: 10, pattern: 'stream', interval: 0.045, damage: 360,
       speed: 1000, range: 540, radius: 6, breakWalls: true,
+    },
+    gadget: {
+      name: 'Silver Bullet', icon: 'bolt',
+      blurb: 'One round that goes through everything in the lane.',
+      aimed: true,
+      spec: {
+        emit: 'projectiles', count: 1, damage: 900, speed: 1250, range: 620,
+        radius: 7, pierce: true, color: '#dbeafe',
+      },
     },
     hyper: { name: 'Hot Streak', charge: 4200, super: { count: 12, damage: 420, pierce: true } },
   },
@@ -56,6 +70,11 @@ const BRAWLERS = [
       emit: 'dash', distance: 440, speed: 820, damage: 1100, knockback: 320,
       breakWalls: true, stun: 0.3,
     },
+    gadget: {
+      name: 'Tin Plate', icon: 'shield',
+      blurb: 'Bolts on a shield that soaks the next burst.',
+      spec: { emit: 'self', shield: 2600, color: '#ef4444' },
+    },
     hyper: { name: 'Redline', charge: 4600, super: { distance: 560, damage: 1400, knockback: 460 } },
   },
   {
@@ -70,6 +89,12 @@ const BRAWLERS = [
     super: {
       emit: 'leap', range: 440, speed: 640,
       onArrive: { emit: 'area', range: 0, radius: 118, damage: 1200, duration: 0.1, knockback: 260 },
+    },
+    gadget: {
+      name: 'Suplex', icon: 'fist',
+      blurb: 'Grabs whoever is in front and puts them on the floor.',
+      aimed: true,
+      spec: { emit: 'melee', arc: 1.3, reach: 130, damage: 500, stun: 1.0, color: '#f97316' },
     },
     hyper: {
       name: 'Meteor Drop', charge: 4600,
@@ -90,6 +115,14 @@ const BRAWLERS = [
       emit: 'projectiles', count: 9, pattern: 'stream', interval: 0.05, damage: 360,
       speed: 940, range: 540, radius: 6, bounce: 6,
     },
+    gadget: {
+      name: 'Kick Away', icon: 'burst',
+      blurb: 'A ring that shoves everyone off you.',
+      spec: {
+        emit: 'area', range: 0, radius: 165, damage: 320, knockback: 460,
+        duration: 0.1, color: '#a78bfa',
+      },
+    },
     hyper: { name: 'Bank Shot', charge: 4200, super: { count: 12, damage: 420, bounce: 8 } },
   },
   {
@@ -107,6 +140,12 @@ const BRAWLERS = [
       aoe: 76, speed: 620, range: 450, radius: 9,
       puddle: { dps: 480, duration: 3, radius: 80 },
     },
+    gadget: {
+      name: 'Sticky Syrup', icon: 'drop',
+      blurb: 'Pours a patch nobody crosses in a hurry.',
+      aimed: true,
+      spec: { emit: 'area', range: 400, radius: 105, slow: 0.55, duration: 3.6, color: '#fbbf24' },
+    },
     hyper: {
       name: 'Spill Over', charge: 4200,
       super: { count: 6, puddle: { dps: 600, duration: 3.6, radius: 88 } },
@@ -123,6 +162,11 @@ const BRAWLERS = [
       cooldown: 0.38, pierce: true,
     },
     super: { emit: 'self', teamRadius: 340, teamHeal: 2400, heal: 2400, color: '#f472b6' },
+    gadget: {
+      name: 'Tuning Fork', icon: 'heart',
+      blurb: 'A small chord that tops the team up between fights.',
+      spec: { emit: 'self', teamRadius: 300, teamHeal: 1700, heal: 1700, color: '#f472b6' },
+    },
     hyper: { name: 'Crescendo', charge: 4000, super: { teamRadius: 420, teamHeal: 3400, heal: 3400 } },
   },
   {
@@ -142,6 +186,15 @@ const BRAWLERS = [
         aoe: 72, speed: 700, range: 10, radius: 9,
       },
     },
+    gadget: {
+      name: 'Powder Charge', icon: 'bomb',
+      blurb: 'Lobs a charge over the wall you are hiding behind.',
+      aimed: true,
+      spec: {
+        emit: 'lob', count: 1, damage: 950, aoe: 96, speed: 660, range: 430,
+        radius: 10, color: '#f9a8d4',
+      },
+    },
     hyper: {
       name: 'Overwatch', charge: 4200,
       super: { onArrive: { emit: 'lob', count: 6, pattern: 'cluster', patternSize: 84, damage: 820, aoe: 92, speed: 700, range: 10, radius: 10 } },
@@ -157,6 +210,11 @@ const BRAWLERS = [
     super: {
       emit: 'projectiles', count: 5, pattern: 'fan', spread: 0.7, damage: 500,
       speed: 640, range: 350, radius: 11, pierce: true, lifesteal: 0.5,
+    },
+    gadget: {
+      name: 'Full Circle', icon: 'spin',
+      blurb: 'One spin of the shovel that catches everyone around you.',
+      spec: { emit: 'melee', arc: 6.283, reach: 128, damage: 760, lifesteal: 0.4, color: '#7c3aed' },
     },
     hyper: { name: 'Night Feed', charge: 4000, super: { count: 8, damage: 600, lifesteal: 0.7 } },
   },
@@ -174,6 +232,14 @@ const BRAWLERS = [
     super: {
       emit: 'area', range: 430, radius: 135, dps: 600, slow: 0.55, duration: 3.4,
       damage: 340, color: '#22c55e',
+    },
+    gadget: {
+      name: 'Pincushion', icon: 'star',
+      blurb: 'Fires spines out in every direction at once.',
+      spec: {
+        emit: 'projectiles', count: 12, pattern: 'fan', spread: 6.283, damage: 300,
+        speed: 580, range: 215, radius: 6, color: '#22c55e',
+      },
     },
     hyper: {
       name: 'Bramble Burst', charge: 4000,
@@ -199,6 +265,11 @@ const BRAWLERS = [
       emit: 'delayedArea', range: 330, radius: 112, delay: 1.0, damage: 950,
       perFish: { radius: 15, damage: 190 }, maxFish: 6, color: '#38bdf8',
     },
+    gadget: {
+      name: 'Slip Away', icon: 'ghost',
+      blurb: 'Ducks out of sight long enough to reset the fight.',
+      spec: { emit: 'self', heal: 1500, invis: 2.4, haste: { duration: 2.4, mult: 1.2 }, color: '#38bdf8' },
+    },
     hyper: { name: 'Deep Haul', charge: 4000, super: { delay: 0.8, damage: 1300, radius: 150 } },
   },
   {
@@ -221,6 +292,11 @@ const BRAWLERS = [
       emit: 'delayedArea', range: 430, radius: 132, delay: 0.85, damage: 880,
       centerMult: 2, shape: 'x', color: '#e11d48',
     },
+    gadget: {
+      name: 'Second Wind', icon: 'wind',
+      blurb: 'A breath back and a burst of speed to spend it on.',
+      spec: { emit: 'self', heal: 1500, haste: { duration: 2.6, mult: 1.35 }, color: '#e11d48' },
+    },
     hyper: { name: 'Crosscut', charge: 4000, super: { radius: 172, damage: 1150, delay: 0.7 } },
   },
   {
@@ -236,6 +312,12 @@ const BRAWLERS = [
     super: {
       emit: 'melee', arc: 1.75, reach: 230, damage: 900, stun: 1.9, cooldown: 0.5,
       windup: 0.35, breakWalls: true,
+    },
+    gadget: {
+      name: 'Magnet Head', icon: 'magnet',
+      blurb: 'Drags everyone within reach into hammer range.',
+      aimed: true,
+      spec: { emit: 'pull', range: 170, radius: 230, strength: 340, duration: 0.9, color: '#84cc16' },
     },
     hyper: { name: 'Groundbreak', charge: 5000, super: { reach: 285, damage: 1250, stun: 2.5 } },
   },

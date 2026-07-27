@@ -38,6 +38,14 @@ const TUTORIAL = [
     art: 'bush',
   },
   {
+    title: 'Everyone has a gadget',
+    body: {
+      pad: 'Three charges a life, on the small gear button. It is not a Super — it is the button you press to get out of trouble, or to finish someone who nearly got away.',
+      key: 'Three charges a life, on E. It is not a Super — it is the button you press to get out of trouble, or to finish someone who nearly got away.',
+    },
+    art: 'gadget',
+  },
+  {
     title: 'Try anything in the Range',
     body: {
       pad: 'The Practice Range has no clock and no score, and every fighter is playable there — including the ones you have not unlocked.',
@@ -155,6 +163,27 @@ const Tutorial = {
         ctx.arc(bx, 20 + (bx % 20) * 0.6, 30, 0, Math.PI * 2);
         ctx.fill();
       }
+    } else if (kind === 'gadget') {
+      // Three charges, drawn as three gear ticks with the last one spent.
+      for (let i = 0; i < 3; i++) {
+        const gx = 20 + i * 62, gy = 4, r = 26;
+        ctx.fillStyle = i < 2 ? '#5eead4' : 'rgba(255,255,255,.16)';
+        ctx.beginPath();
+        for (let j = 0; j < 14; j++) {
+          const a = (j / 14) * Math.PI * 2;
+          const rr = j % 2 ? r * 0.66 : r;
+          const px = gx + Math.cos(a) * rr, py = gy + Math.sin(a) * rr;
+          j === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(gx, gy, r * 0.36, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      hero(-110, 0);
     } else if (kind === 'range') {
       for (const [dx, r] of [[70, 34], [70, 23], [70, 12]]) {
         ctx.beginPath();

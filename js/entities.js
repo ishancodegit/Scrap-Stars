@@ -98,9 +98,19 @@ class Brawler {
     this.attackToken = 0;
     this.attackIndex = 0;     // which half of an alternating attack is next
 
-    this.input = { mx: 0, my: 0, aim: 0, aimDist: 0, fire: false, super: false, hyper: false };
+    /*
+     * Gadget: a small active with a hard limit rather than a meter. Charges
+     * come back on respawn, so it is a resource you spend in a fight rather
+     * than one you hoard across a whole match.
+     */
+    this.gadgetUses = def.gadget ? GADGET_USES : 0;
+    this.gadgetCd = 0;
+    this.gadgetFlash = 0;
+
+    this.input = { mx: 0, my: 0, aim: 0, aimDist: 0, fire: false, super: false, hyper: false, gadget: false };
   }
 
+  get gadgetReady() { return !!this.def.gadget && this.gadgetUses > 0 && this.gadgetCd <= 0; }
   get superReady() { return this.charge >= this.def.superCharge; }
   get chargePct() { return clamp(this.charge / this.def.superCharge, 0, 1); }
   get hyperReady() { return !!this.def.hyper && this.hyperCharge >= this.hyperMax; }
@@ -146,6 +156,8 @@ class Brawler {
     this.pierceWallsUntil = 0;
     this.hyperActive = 0;
     this.chargeUp = 0;
+    this.gadgetUses = this.def.gadget ? GADGET_USES : 0;
+    this.gadgetCd = 0;
   }
 
   update(dt, game) {
@@ -165,6 +177,8 @@ class Brawler {
     this.invisUntil = Math.max(0, this.invisUntil - dt);
     this.hasteUntil = Math.max(0, this.hasteUntil - dt);
     this.pierceWallsUntil = Math.max(0, this.pierceWallsUntil - dt);
+    this.gadgetCd = Math.max(0, this.gadgetCd - dt);
+    this.gadgetFlash = Math.max(0, this.gadgetFlash - dt);
     if (this.hyperActive > 0) this.hyperActive = Math.max(0, this.hyperActive - dt);
 
     if (this.poison) {
@@ -187,6 +201,7 @@ class Brawler {
     else this._updateMove(dt, game);
 
     if (!this.stunned && !this.dash && !this.leap) {
+      if (this.input.gadget && this.gadgetReady) this.useGadget(game);
       if (this.input.hyper && this.hyperReady && this.superReady) this.activateHyper(game);
       if (this.input.super && this.superReady) this.useSuper(game);
       // A charge-hook brawler drives its own attack off hold/release instead.
@@ -412,6 +427,27 @@ class Brawler {
       isSuper: true,
     });
     Sfx.play('super');
+    if (typeof Music !== 'undefined') Music.duck(0.5, 0.6);
+  }
+
+  /*
+   * Gadgets aim wherever you already point. A few of them (a lobbed charge, a
+   * syrup patch) want a distance too, which is the same aim the Super uses.
+   */
+  useGadget(game) {
+    const g = this.def.gadget;
+    if (!g) return;
+    this.gadgetUses--;
+    this.gadgetCd = GADGET_COOLDOWN;
+    this.gadgetFlash = 0.4;
+    this.gadgetsUsed = (this.gadgetsUsed || 0) + 1;
+    this.revealTimer = ATTACK_REVEAL;
+    Abilities.emit(this, g.spec, game, {
+      angle: this.input.aim,
+      aimDist: this.input.aimDist || g.spec.range || 200,
+    });
+    game.floatText(this.x, this.y - this.radius - 26, g.name.toUpperCase(), g.spec.color || this.def.color, 13);
+    Sfx.play('gadget');
   }
 
   activateHyper(game) {

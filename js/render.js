@@ -1307,9 +1307,12 @@ const Renderer = {
   _drawPlayerPanel(ctx, game, w, h) {
     const p = game.player;
     if (!p) return;
-    const x = 20, y = Input.usingTouch ? 78 : h - 112;
+    // The panel grows to fit whatever this fighter actually has, so a kit
+    // without Overdrive does not sit in a box with a gap where it would be.
+    const ph = 82 + (p.def.hyper ? 14 : 0) + (p.def.gadget ? 16 : 0);
+    const x = 20, y = Input.usingTouch ? 78 : h - ph - 16;
     ctx.fillStyle = 'rgba(9,11,16,.78)';
-    this._roundRect(ctx, x, y, 284, 96, 14);
+    this._roundRect(ctx, x, y, 284, ph, 14);
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,.09)';
     ctx.lineWidth = 1;
@@ -1343,9 +1346,10 @@ const Renderer = {
 
     // Ammo pips.
     ctx.textAlign = 'left';
-    const pipW = (hbW - 12) / p.def.maxAmmo;
-    for (let i = 0; i < p.def.maxAmmo; i++) {
-      const px = hbX + i * (pipW + 6);
+    const pipGap = 6;
+    const pipW = (hbW - pipGap * (p.maxAmmo - 1)) / p.maxAmmo;
+    for (let i = 0; i < p.maxAmmo; i++) {
+      const px = hbX + i * (pipW + pipGap);
       ctx.fillStyle = '#111827';
       this._roundRect(ctx, px, y + 32, pipW, 10, 5);
       ctx.fill();
@@ -1393,6 +1397,25 @@ const Renderer = {
       ctx.fillStyle = p.hyperReady ? '#fb923c' : 'rgba(255,255,255,.32)';
       ctx.fillText(p.hyperActive > 0 ? `${p.def.hyper.name.toUpperCase()} ACTIVE`
         : p.hyperReady ? 'READY — Q' : '', hbX + hbW, hy - 6);
+    }
+
+    if (p.def.gadget) {
+      const gy = y + (p.def.hyper ? 86 : 72);
+      ctx.font = 'bold 9px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(255,255,255,.35)';
+      ctx.fillText('GADGET — E', hbX, gy);
+      // One pip per charge, because three uses is a number you count, not a
+      // level you read off a bar.
+      const pw = 13, gap = 5;
+      for (let i = 0; i < GADGET_USES; i++) {
+        const px = hbX + hbW - (GADGET_USES - i) * (pw + gap) + gap;
+        ctx.fillStyle = i < p.gadgetUses
+          ? (p.gadgetReady ? '#5eead4' : '#0f766e')
+          : 'rgba(255,255,255,.13)';
+        this._roundRect(ctx, px, gy - 4, pw, 8, 4);
+        ctx.fill();
+      }
     }
   },
 
@@ -1453,6 +1476,21 @@ const Renderer = {
       label: 'SUPER',
       flash: Input.superFlash,
     });
+
+    // The gadget shows charges rather than a meter — it is a countable
+    // resource, so the ring is split into as many arcs as you have left.
+    if (p && p.def.gadget) {
+      this._actionButton(ctx, L.gadgetBtn, {
+        progress: p.gadgetCd > 0 ? 1 - p.gadgetCd / GADGET_COOLDOWN : 1,
+        ready: p.gadgetReady,
+        ring: '#5eead4',
+        glyph: 'gear',
+        label: 'GADGET',
+        flash: Input.gadgetFlash,
+        small: true,
+        pips: { have: p.gadgetUses, of: GADGET_USES },
+      });
+    }
 
     if (p && p.def.hyper) {
       this._actionButton(ctx, L.hyperBtn, {
@@ -1554,7 +1592,20 @@ const Renderer = {
       ctx.restore();
       return;
     }
-    if (o.glyph === 'bolt') {
+    if (o.glyph === 'gear') {
+      const teeth = 7;
+      for (let i = 0; i < teeth * 2; i++) {
+        const a = (i / (teeth * 2)) * Math.PI * 2;
+        const rr = i % 2 ? gs * 0.62 : gs * 0.92;
+        const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.moveTo(x + gs * 0.34, y);
+      ctx.arc(x, y, gs * 0.34, 0, Math.PI * 2, true);
+      ctx.fill('evenodd');
+      ctx.beginPath();
+    } else if (o.glyph === 'bolt') {
       ctx.moveTo(x + gs * 0.25, y - gs);
       ctx.lineTo(x - gs * 0.55, y + gs * 0.15);
       ctx.lineTo(x - gs * 0.05, y + gs * 0.15);
@@ -1572,6 +1623,19 @@ const Renderer = {
     ctx.closePath();
     ctx.fill();
     ctx.globalAlpha = 1;
+
+    // Charges left, as ticks around the rim. Countable at a glance, which a
+    // partly-filled bar never is.
+    if (o.pips) {
+      const n = o.pips.of;
+      for (let i = 0; i < n; i++) {
+        const a = -Math.PI / 2 + (i - (n - 1) / 2) * 0.42;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(a) * r * 1.32, y + Math.sin(a) * r * 1.32, r * 0.14, 0, Math.PI * 2);
+        ctx.fillStyle = i < o.pips.have ? o.ring : 'rgba(255,255,255,.18)';
+        ctx.fill();
+      }
+    }
 
     if (o.flash > 0) {
       ctx.strokeStyle = '#fff';

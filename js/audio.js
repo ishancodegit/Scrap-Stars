@@ -96,6 +96,11 @@ const Sfx = {
       case 'death': this.noise({ dur: 0.35, gain: 0.35 }); this.tone({ freq: 200, to: 60, dur: 0.35, gain: 0.25 }); break;
       case 'crate': this.noise({ dur: 0.16, gain: 0.28 }); break;
       case 'charged': this.tone({ freq: 520, to: 900, dur: 0.18, type: 'triangle', gain: 0.3 }); break;
+      // Mechanical rather than magical, so it never reads as a Super.
+      case 'gadget':
+        this.tone({ freq: 320, to: 620, dur: 0.11, type: 'square', gain: 0.16 });
+        this.noise({ dur: 0.05, gain: 0.09 });
+        break;
       case 'tick': this.tone({ freq: 880, dur: 0.07, type: 'triangle', gain: 0.25 }); break;
       case 'win': [523, 659, 784, 1046].forEach((f, i) => this.tone({ freq: f, dur: 0.24, type: 'triangle', gain: 0.3, delay: i * 0.13 })); break;
       case 'lose': [523, 415, 330, 262].forEach((f, i) => this.tone({ freq: f, dur: 0.28, type: 'triangle', gain: 0.3, delay: i * 0.15 })); break;

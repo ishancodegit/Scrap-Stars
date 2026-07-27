@@ -389,6 +389,7 @@ const Net = {
       x: +i.mx.toFixed(2), y: +i.my.toFixed(2),
       a: +i.aim.toFixed(3), d: Math.round(i.aimDist),
       f: i.fire ? 1 : 0, s: i.super ? 1 : 0, h: i.hyper ? 1 : 0, o: i.holding ? 1 : 0,
+      g: i.gadget ? 1 : 0,
     });
   },
 

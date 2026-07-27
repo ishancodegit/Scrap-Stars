@@ -196,6 +196,7 @@ const Game = {
     this.outro = null;
     this.callout = null;
     Sfx.resume();
+    if (typeof Music !== 'undefined') { Music.setTension(0); Music.play('battle'); }
   },
 
   /* ---------------- main loop ---------------- */
@@ -203,6 +204,14 @@ const Game = {
   frame(now) {
     let dt = Math.min((now - this._last) / 1000 || 0, 0.05);
     this._last = now;
+
+    // The Gamepad API has no events, so a controller only exists if something
+    // looks for it every frame. In a match it drives the fighter; everywhere
+    // else it drives the menus.
+    if (typeof Pad !== 'undefined') {
+      if (this.state === 'playing' && !this.paused) Pad.poll(dt);
+      else { Pad.move.x = Pad.move.y = 0; Pad.aim = null; Pad.firing = false; Pad.pollMenu(dt); }
+    }
 
     // The lineup card, the countdown and hit-stop all hold the simulation while
     // the presentation keeps running, so the screen never looks frozen.
@@ -258,6 +267,14 @@ const Game = {
 
     this.timeLeft = Math.max(0, this.timeLeft - dt);
 
+    // The score tightens as the clock runs out, and again when your team is a
+    // single life from losing. A match should sound different at the end of it.
+    if (typeof Music !== 'undefined' && !this.practice) {
+      const clock = this.mode.noClock ? 0 : clamp((30 - this.timeLeft) / 20, 0, 1);
+      const mine = this.brawlers.filter((b) => b.team === this.playerTeam && b.alive).length;
+      Music.setTension(Math.max(clock, mine <= 1 ? 0.7 : 0));
+    }
+
     this._readPlayerInput();
     this._readRemoteInput();
 
@@ -269,7 +286,7 @@ const Game = {
     for (const b of this.brawlers) {
       if (b.isBot && b.alive) updateBot(b, this, dt);
       // Practice dummies have no brain and no hands.
-      if (b.isDummy) { b.input.mx = 0; b.input.my = 0; b.input.fire = false; b.input.super = false; }
+      if (b.isDummy) { b.input.mx = 0; b.input.my = 0; b.input.fire = false; b.input.super = false; b.input.gadget = false; }
     }
 
     // Alternate who acts first so neither side is permanently ahead on
@@ -314,10 +331,11 @@ const Game = {
     i.aim = m.a; i.aimDist = m.d;
     i.fire = !!m.f;
     i.holding = !!m.o;
-    // Super and Hyper are edge-triggered, so consume them once.
-    i.super = !!m.s; i.hyper = !!m.h;
+    // Super, Overdrive and the gadget are edge-triggered, so consume them once.
+    i.super = !!m.s; i.hyper = !!m.h; i.gadget = !!m.g;
     if (m.s) m.s = 0;
     if (m.h) m.h = 0;
+    if (m.g) m.g = 0;
   },
 
   _readPlayerInput() {
@@ -328,7 +346,17 @@ const Game = {
     inp.mx = mv.x;
     inp.my = mv.y;
 
-    if (Input.usingTouch) {
+    // A controller aims with the right stick and shoots by pushing it, which
+    // is neither the mouse path nor the touch path — so it is checked first.
+    if (typeof Pad !== 'undefined' && Pad.aim) {
+      const reach = specRange(p.def.attack);
+      inp.aim = Pad.aim.angle;
+      inp.aimDist = 80 + Pad.aim.len * (reach - 80);
+      inp.fire = Pad.firing;
+    } else if (typeof Pad !== 'undefined' && Pad.active && Pad.firing) {
+      // Trigger held with the stick centred: keep the last heading and fire.
+      inp.fire = true;
+    } else if (Input.usingTouch) {
       const reach = specRange(p.def.attack);
       if (Input.aimStick) {
         // Holding the stick aims; the shot waits for the release.
@@ -367,6 +395,7 @@ const Game = {
     if (Input.consumePause()) UI.togglePause();
     inp.super = Input.consumeSuper();
     inp.hyper = Input.consumeHyper();
+    inp.gadget = Input.consumeGadget();
     const em = Input.consumeEmote();
     if (em >= 0) this.sendEmote(p, em);
 
@@ -385,6 +414,16 @@ const Game = {
         if (sol) { inp.aim = sol.angle; inp.aimDist = sol.dist; }
       }
     }
+    // An aimed gadget lands where a Super would: on whatever you are pointing
+    // at, or the best target if you are pointing at nothing in particular.
+    if (inp.gadget && p.def.gadget && p.def.gadget.aimed) {
+      const gSpec = p.def.gadget.spec;
+      if (Input.usingTouch || Input.autoAim) {
+        const sol = AutoAim.solve(this, p, { spec: gSpec });
+        if (sol) { inp.aim = sol.angle; inp.aimDist = sol.dist; }
+      }
+    }
+
     // Charge-hook brawlers need to know the button is being held, not just fired.
     inp.holding = Input.usingTouch ? !!Input.aimStick : Input.firing;
 
@@ -772,6 +811,8 @@ const Game = {
         won: winner === this.playerTeam, mvp: best === p,
       });
     }
+    // Get out of the way of the last hit and the win sting.
+    if (typeof Music !== 'undefined') Music.duck(0.65, 1.6);
     Sfx.play(winner === this.playerTeam ? 'win' : 'lose');
   },
 };
