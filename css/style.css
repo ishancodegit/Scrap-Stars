@@ -58,6 +58,9 @@ html, body {
   width: 100%;
   height: 100%;
   display: block;
+  /* Above the menu scenery. Without this the backdrop painted over the whole
+     match and the arena was never visible. */
+  z-index: 2;
   touch-action: none;
   cursor: crosshair;
 }
@@ -74,6 +77,9 @@ html, body {
   z-index: 1;
   pointer-events: none;
 }
+/* Taken off the page entirely during a match — it is menu scenery, and even
+   underneath the arena it would be a full-screen canvas composited for nothing. */
+#backdrop.hidden { display: none !important; }
 
 .overlay {
   position: fixed;

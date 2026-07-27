@@ -51,7 +51,9 @@ const Backdrop = {
   },
 
   start() {
-    if (this.running || !this.ctx) return;
+    if (!this.ctx) return;
+    this.el.classList.remove('hidden');
+    if (this.running) return;
     this.running = true;
     this._last = performance.now();
     this._loop(this._last);
@@ -60,6 +62,7 @@ const Backdrop = {
   stop() {
     this.running = false;
     cancelAnimationFrame(this._raf);
+    if (this.el) this.el.classList.add('hidden');
   },
 
   _loop(now) {

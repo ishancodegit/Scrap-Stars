@@ -21,6 +21,7 @@ const Input = {
   superAim: null,
   emoteQueued: -1,
   emoteOpen: false,
+  pauseQueued: false,
   hyperFlash: 0,
   aimReleased: false,
   releaseAim: null,
@@ -93,6 +94,9 @@ const Input = {
       // the stick for space and never runs off the side on a short screen.
       emoteBtn: { x: pad + r * 2.5, y: h - pad - r * 0.45, r: Math.max(17, r * 0.36) },
       muteBtn: { x: w - pad * 0.8, y: pad * 0.8, r: Math.max(15, r * 0.28) },
+      // Next to the speaker: leaving a match was keyboard-only, which on a
+      // phone means there was no way out of one at all.
+      pauseBtn: { x: w - pad * 0.8 - Math.max(38, r * 0.72), y: pad * 0.8, r: Math.max(15, r * 0.28) },
     };
   },
 
@@ -144,6 +148,10 @@ const Input = {
     }
     if (this._hit(L.emoteBtn, x, y)) {
       this.emoteOpen = true;
+      return true;
+    }
+    if (this._hit(L.pauseBtn, x, y)) {
+      this.pauseQueued = true;
       return true;
     }
     if (this._hit(L.muteBtn, x, y)) {
@@ -255,6 +263,12 @@ const Input = {
   consumeSuper() {
     const q = this.superQueued;
     this.superQueued = false;
+    return q;
+  },
+
+  consumePause() {
+    const q = this.pauseQueued;
+    this.pauseQueued = false;
     return q;
   },
 

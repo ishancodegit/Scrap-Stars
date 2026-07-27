@@ -23,6 +23,10 @@ const ATTACK_REVEAL = 1.1;
  * round corners, and keep sliding when knocked back.
  */
 const MOVE = {
+  // Applied to every fighter's walk speed, so the roster keeps its relative
+  // pacing. Scaling here rather than editing each entry also keeps it clear
+  // of the `speed` fields on projectiles, which mean something else entirely.
+  speedScale: 0.9,
   accel: 11,        // how hard you claw up to full speed
   friction: 8.5,    // how fast you shed it when you let go
   stopSpeed: 60,    // floor so you actually come to rest

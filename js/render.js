@@ -779,6 +779,7 @@ const Renderer = {
       this._drawTouchControls(ctx, w, h, game);
       this._drawEmoteWheel(ctx, w, h);
       this._drawMute(ctx, w, h);
+      this._drawPause(ctx, w, h);
     }
     this._drawLowHp(ctx, game, w, h);
     this._drawIntro(ctx, game, w, h);
@@ -1311,6 +1312,25 @@ const Renderer = {
       ctx.lineTo(m.x + m.r * 0.5, m.y + m.r * 0.5);
       ctx.stroke();
     }
+    ctx.restore();
+  },
+
+  /* Two bars: the way out of a match on a touchscreen. */
+  _drawPause(ctx, w, h) {
+    const m = Input.layout(w, h).pauseBtn;
+    ctx.save();
+    ctx.globalAlpha = 0.72;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(12,7,24,.75)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    const bw = m.r * 0.2, bh = m.r * 0.52;
+    ctx.fillRect(m.x - m.r * 0.32, m.y - bh / 2, bw, bh);
+    ctx.fillRect(m.x + m.r * 0.12, m.y - bh / 2, bw, bh);
     ctx.restore();
   },
 

@@ -356,6 +356,7 @@ const Game = {
       inp.fire = Input.firing;
     }
 
+    if (Input.consumePause()) UI.togglePause();
     inp.super = Input.consumeSuper();
     inp.hyper = Input.consumeHyper();
     const em = Input.consumeEmote();

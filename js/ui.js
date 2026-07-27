@@ -31,6 +31,8 @@ const UI = {
     on('pick-friends', () => this._openFriends());
     on('pick-quests', () => { this._buildQuests(); this.show('quests'); });
     on('pick-settings', () => { this._buildSettings(); this.show('settings'); });
+    on('resume', () => this.togglePause(false));
+    on('quit', () => this.leaveMatch());
     on('settings-back', () => this.show('home'));
     on('quests-back', () => this.show('home'));
     on('friends-back', () => { Net.close(); this._resetFriends(); this.show('home'); });
@@ -43,11 +45,25 @@ const UI = {
         const muted = Sfx.toggle();
         document.getElementById('muted').textContent = muted ? 'Sound: off (M)' : 'Sound: on (M)';
       }
-      if ((k === 'p' || k === 'escape') && Game.state === 'playing') {
-        Game.paused = !Game.paused;
-        document.getElementById('paused').classList.toggle('hidden', !Game.paused);
-      }
+      if ((k === 'p' || k === 'escape') && Game.state === 'playing') this.togglePause();
     });
+  },
+
+  /*
+   * Pausing only stops your own screen — a friend's match keeps running, so
+   * this never claims to have stopped anything but the local simulation.
+   */
+  togglePause(force) {
+    if (Game.state !== 'playing') return;
+    Game.paused = force === undefined ? !Game.paused : force;
+    document.getElementById('paused').classList.toggle('hidden', !Game.paused);
+  },
+
+  leaveMatch() {
+    Game.paused = false;
+    Game.state = 'menu';
+    if (typeof Net !== 'undefined' && Net.active) Net.close();
+    this.show('home');
   },
 
   show(which) {

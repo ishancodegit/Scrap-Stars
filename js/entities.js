@@ -42,7 +42,7 @@ class Brawler {
     this.powerMult = powerMult(this.power);
     this.maxHp = Math.round(def.hp * this.powerMult);
     this.hp = this.maxHp;
-    this.baseSpeed = def.speed;
+    this.baseSpeed = def.speed * MOVE.speedScale;
     this.x = 0;
     this.y = 0;
     this.vx = 0;
