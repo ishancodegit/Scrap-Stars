@@ -432,6 +432,20 @@ const UI = {
       rc.restore();
     }
 
+    // What this match moved along, so daily progress is visible where it was
+    // actually earned rather than only on a screen you might not open.
+    const gains = document.getElementById('quest-gains');
+    const moved = Game.questGains || [];
+    gains.classList.toggle('hidden', moved.length === 0);
+    gains.innerHTML = moved.map((q) => `
+      <div class="gainrow${q.justFinished ? ' done' : ''}">
+        <span class="gaintext">${q.text}</span>
+        <span class="gainbar"><i style="width:${Math.round(q.have / q.goal * 100)}%"></i></span>
+        <span class="gainnum">${q.justFinished
+          ? `+${q.reward} cr`
+          : `${q.have.toLocaleString()} / ${q.goal.toLocaleString()}`}</span>
+      </div>`).join('');
+
     // Prize Pods earned this match. The button only announces them — the
     // opening itself takes over the whole screen.
     this._paintDropButton();

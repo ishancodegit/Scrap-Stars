@@ -115,15 +115,28 @@ const Quests = {
 
   claimable() { return this.today().filter((q) => q.done && !q.claimed).length; },
 
-  /* Roll up everything one finished match contributed. */
+  /*
+   * Roll up everything one finished match contributed, and report which quests
+   * moved so the result screen can show it. Progress that only happens in
+   * storage is progress the player never sees.
+   */
   recordMatch(game, won, wasMvp) {
     const p = game.player;
-    if (!p) return;
+    if (!p) return [];
+    const before = this.today();
+
     this.bump('played', 1);
     if (won) this.bump('wins', 1);
     if (wasMvp) this.bump('mvp', 1);
     this.bump('kills', p.kills);
     this.bump('damage', Math.round(p.damageDealt || 0));
     this.bump('supers', p.supersLanded || 0);
+
+    const after = this.today();
+    return after.map((q, i) => ({
+      text: q.text, goal: q.goal, have: q.have, reward: q.reward,
+      gained: q.have - before[i].have,
+      justFinished: q.done && !before[i].done,
+    })).filter((q) => q.gained > 0);
   },
 };

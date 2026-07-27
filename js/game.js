@@ -749,7 +749,7 @@ const Game = {
       const best = this.brawlers.reduce((a, b) =>
         ((b.damageDealt || 0) + b.kills * 1200 - b.deaths * 300) >
         ((a.damageDealt || 0) + a.kills * 1200 - a.deaths * 300) ? b : a);
-      Quests.recordMatch(this, winner === this.playerTeam, best === this.player);
+      this.questGains = Quests.recordMatch(this, winner === this.playerTeam, best === this.player);
     }
     Sfx.play(winner === this.playerTeam ? 'win' : 'lose');
   },

@@ -782,7 +782,6 @@ const Renderer = {
       this._drawPause(ctx, w, h);
     }
     this._drawLowHp(ctx, game, w, h);
-    this._drawIntro(ctx, game, w, h);
     this._drawCallout(ctx, game, w, h);
     this._drawCountdown(ctx, game, w, h);
     this._drawLineup(ctx, game, w, h);
@@ -1019,44 +1018,6 @@ const Renderer = {
     ctx.strokeText(label, 0, 0);
     ctx.fillStyle = label === 'GO!' ? '#4ade80' : '#ffc738';
     ctx.fillText(label, 0, 0);
-    ctx.restore();
-  },
-
-  /*
-   * The first two seconds of a match name the mode and the map, then get out
-   * of the way. Without it a match just starts, with no beat to read the board.
-   */
-  _drawIntro(ctx, game, w, h) {
-    const t = game.time;
-    if (t > 2.4 || game.introT > 0) return;
-    // Slide in, hold, slide out.
-    const a = t < 0.35 ? t / 0.35 : t > 2.0 ? 1 - (t - 2.0) / 0.4 : 1;
-    const slide = t < 0.35 ? (1 - a) * 90 : t > 2.0 ? (1 - a) * -90 : 0;
-    const cy = h * 0.36;
-    ctx.save();
-    ctx.globalAlpha = clamp(a, 0, 1);
-    ctx.translate(slide, 0);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    ctx.fillStyle = 'rgba(12,7,24,.72)';
-    this._roundRect(ctx, w / 2 - 230, cy - 52, 460, 104, 20);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.16)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#12071f';
-    ctx.lineWidth = 7;
-    ctx.font = '900 38px ui-rounded, system-ui, sans-serif';
-    ctx.strokeText(game.mode.name.toUpperCase(), w / 2, cy - 12);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(game.mode.name.toUpperCase(), w / 2, cy - 12);
-
-    ctx.font = '900 15px ui-rounded, system-ui, sans-serif';
-    ctx.fillStyle = PALETTE.accent;
-    ctx.fillText((game.mapDef ? game.mapDef.name : '').toUpperCase(), w / 2, cy + 24);
     ctx.restore();
   },
 
