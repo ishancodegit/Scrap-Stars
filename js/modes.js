@@ -364,6 +364,66 @@ const MODES = {
   },
 };
 
+/*
+ * The practice range. No clock, no score, no opponents that fight back — just
+ * targets that come back a moment after you break them, so you can learn what
+ * a kit does without a match happening around you.
+ *
+ * The dummies are ordinary fighters with no brain and no input. That is the
+ * whole trick: every projectile, area, poison, knockback and damage number
+ * already knows what to do with a fighter, so none of it needed reimplementing
+ * and none of it can drift from how a real match behaves.
+ */
+MODES.practice = {
+  id: 'practice', name: 'Practice Range', tag: 'SOLO', time: 9999, icon: 'target',
+  noClock: true, solo: true,
+  blurb: 'No clock, no score. Break the dummies and see what a kit really does.',
+  tip: 'Every fighter is playable here, owned or not.',
+
+  init(g) {
+    // Spread across the useful ranges: point blank, mid, and past most weapons.
+    const spots = [[0.30, 0.28], [0.30, 0.72], [0.5, 0.5], [0.70, 0.30], [0.70, 0.70]];
+    for (const b of g.brawlers) {
+      if (b === g.player) continue;
+      b.isBot = false;
+      b.ai = null;
+      b.isDummy = true;
+      b.input.mx = 0;
+      b.input.my = 0;
+    }
+    const dummies = g.brawlers.filter((b) => b.isDummy);
+    dummies.forEach((b, i) => {
+      const [fx, fy] = spots[i % spots.length];
+      b.team = 1 - g.playerTeam;
+      b.spawnAt(fx * MAP_W * TILE, fy * MAP_H * TILE);
+      b.home = { x: b.x, y: b.y };
+      b.spawnGuard = 0;
+    });
+  },
+
+  update(g) {
+    for (const b of g.brawlers) {
+      if (!b.isDummy || !b.home) continue;
+      // Knockback and hooks move them; put them back so the range stays a range.
+      if (b.alive && (b.vx || b.vy)) {
+        const d = dist(b.x, b.y, b.home.x, b.home.y);
+        if (d > 4) {
+          b.x += (b.home.x - b.x) * 0.06;
+          b.y += (b.home.y - b.y) * 0.06;
+        }
+      }
+      if (!b.alive && b.respawnTimer > 1.4) b.respawnTimer = 1.4;
+    }
+  },
+
+  /* A dummy always comes back where it stood. */
+  onRespawn(g, b) {
+    if (b.isDummy && b.home) b.spawnAt(b.home.x, b.home.y);
+  },
+
+  score: () => ['0', '0'],
+};
+
 const MODE_LIST = [MODES.gem, MODES.brawlball, MODES.bounty, MODES.heist, MODES.knockout];
 
 /*
@@ -379,4 +439,4 @@ const RANKED_CARD = {
   blurb: 'A random mode, played for trophies. The bots match your tier — Bronze barely aims, Master does not miss.',
 };
 
-const PICKER_MODES = [RANKED_CARD].concat(MODE_LIST);
+const PICKER_MODES = [RANKED_CARD].concat(MODE_LIST).concat([MODES.practice]);

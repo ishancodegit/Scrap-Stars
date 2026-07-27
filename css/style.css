@@ -810,3 +810,57 @@ th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4) { text-align:
 .gainnum { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
 .gainrow.done .gainnum { color: var(--gold); }
 @media (max-width: 620px) { .gainrow { grid-template-columns: 1fr auto; } .gainbar { display: none; } }
+
+/* ---------- mastery + practice ---------- */
+
+.mastery { display: flex; align-items: center; gap: 7px; width: 100%; margin-top: 7px; font-size: 10.5px; font-weight: 900; }
+.mbadge {
+  width: 15px; height: 15px; flex: none; border-radius: 4px;
+  border: 2px solid var(--edge); transform: rotate(45deg);
+}
+.mbar { flex: 1; height: 6px; border-radius: 99px; background: rgba(0,0,0,.45); border: 2px solid var(--edge); overflow: hidden; }
+.mbar i { display: block; height: 100%; width: 0%; }
+.mnum { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.trybtn {
+  margin-top: 6px; width: 100%; padding: 6px 8px;
+  font: inherit; font-size: 10.5px; font-weight: 900; letter-spacing: .08em;
+  color: var(--text); background: rgba(255, 255, 255, .07);
+  border: 2px solid var(--edge); border-radius: 9px; cursor: pointer;
+}
+.trybtn:hover { background: rgba(255, 255, 255, .14); }
+.trybtn:active { transform: translateY(2px); }
+.trybtn:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+
+/* ---------- first run ---------- */
+
+.tutsheet { width: min(520px, 100%); text-align: center; }
+.tutsheet h2 { margin: 12px 0 0; }
+.tutstep {
+  font-size: 11px; font-weight: 900; letter-spacing: .18em;
+  color: var(--muted); margin-bottom: 8px;
+}
+.tutart {
+  display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto;
+  border-radius: 14px; border: 3px solid var(--edge);
+  background: linear-gradient(180deg, #23163f, #150c28);
+}
+.tutbody { margin: 8px auto 4px; max-width: 40ch; line-height: 1.5; }
+.tutsheet .row.buttons { justify-content: center; gap: 10px; margin-top: 14px; }
+.tutsheet .play.small { padding: 12px 34px; font-size: 17px; }
+
+/* Mastery earned this match, on the result screen. */
+.mgain {
+  display: flex; align-items: center; gap: 16px;
+  margin-top: 14px; padding: 12px 16px;
+  background: #1b0f34; border: 3px solid var(--edge); border-radius: 16px;
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, .55);
+}
+.mgain canvas { width: 56px; height: 56px; flex: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .5)); }
+.mgain-body { flex: 1; display: grid; justify-items: start; gap: 5px; }
+.mgain-body .bar.wide { width: 100%; margin: 0; }
+.mgain-title { font-size: 15px; font-weight: 900; text-shadow: var(--stroke); }
+.mgain.promoted { border-color: var(--gold); background: #2c1f10; }
+.mgain.promoted .mgain-title { color: var(--gold); }
+.mgain.promoted canvas { animation: mgpop .5s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes mgpop { from { transform: scale(.2) rotate(-90deg); } to { transform: none; } }

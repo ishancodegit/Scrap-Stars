@@ -283,6 +283,10 @@ const MAP_STYLES = {
 
 /* Named maps, so a mode is somewhere rather than just something. */
 const MAPS = {
+  practice: [
+    { name: 'The Range', style: 'open' },
+    { name: 'Scrapyard', style: 'balanced' },
+  ],
   gem: [
     { name: 'Hard Rock Mine', style: 'balanced' },
     { name: 'Crystal Arcade', style: 'open' },

@@ -1111,6 +1111,7 @@ const Renderer = {
   },
 
   _drawScoreboard(ctx, game, w) {
+    if (game.mode.noClock) return this._drawRangeHeader(ctx, game, w);
     const cx = w / 2;
     const compact = w < 900 || Input.usingTouch;
     const panelW = compact ? 232 : 320, panelH = compact ? 48 : 62;
@@ -1393,6 +1394,24 @@ const Renderer = {
       ctx.fillText(p.hyperActive > 0 ? `${p.def.hyper.name.toUpperCase()} ACTIVE`
         : p.hyperReady ? 'READY — Q' : '', hbX + hbW, hy - 6);
     }
+  },
+
+  /* The range has no score and no clock, so it says what it is instead. */
+  _drawRangeHeader(ctx, game, w) {
+    const name = (game.player && (game.player.def.skinName || game.player.def.name)) || '';
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(12,7,24,.72)';
+    this._roundRect(ctx, w / 2 - 150, 8, 300, 52, 14);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '900 17px ui-rounded, system-ui, sans-serif';
+    ctx.fillText(name.toUpperCase(), w / 2, 27);
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.font = '900 11px ui-rounded, system-ui, sans-serif';
+    ctx.fillText('PRACTICE RANGE', w / 2, 47);
+    ctx.restore();
   },
 
   _drawFeed(ctx, game, w) {

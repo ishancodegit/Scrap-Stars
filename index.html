@@ -129,6 +129,20 @@
   </div>
 </div>
 
+<!-- First run -->
+<div id="tutorial" class="overlay hidden">
+  <div class="sheet narrowish tutsheet">
+    <div class="tutstep" id="tut-step">1 / 4</div>
+    <canvas id="tut-art" class="tutart" width="420" height="220"></canvas>
+    <h2 id="tut-title">Welcome to Scrap Stars</h2>
+    <p id="tut-body" class="sub tutbody"></p>
+    <div class="row buttons">
+      <button id="tut-next" class="play small">NEXT</button>
+      <button id="tut-skip" class="ghost">SKIP</button>
+    </div>
+  </div>
+</div>
+
 <!-- Settings -->
 <div id="settings" class="overlay hidden">
   <div class="sheet narrowish">
@@ -153,6 +167,12 @@
       <div class="setlabel">Screen effects</div>
       <div class="setsub">Full-screen flashes and the red edge when you are hurt.</div>
       <div id="flash-opts" class="segrow"></div>
+    </div>
+
+    <div class="setblock">
+      <div class="setlabel">How to play</div>
+      <div class="setsub">The four cards from your first run, again.</div>
+      <button id="set-tutorial" class="upbtn wide">Replay the intro</button>
     </div>
   </div>
 </div>
@@ -275,6 +295,14 @@
         <div class="bar wide"><span id="result-fill"></span></div>
       </div>
     </div>
+    <div id="mastery-gain" class="mgain hidden">
+      <canvas id="mgain-badge" width="72" height="72"></canvas>
+      <div class="mgain-body">
+        <div id="mgain-title" class="mgain-title">Buckshot Mastery</div>
+        <div class="bar wide"><span id="mgain-fill"></span></div>
+        <div id="mgain-sub" class="plate-sub">+0</div>
+      </div>
+    </div>
     <div id="quest-gains" class="questgains hidden"></div>
     <table id="scoreboard"></table>
     <div class="row buttons">
@@ -334,6 +362,7 @@
 <script src="js/input.js"></script>
 <script src="js/render.js"></script>
 <script src="js/game.js"></script>
+<script src="js/tutorial.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

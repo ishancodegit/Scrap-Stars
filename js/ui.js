@@ -36,6 +36,9 @@ const UI = {
     on('resume', () => this.togglePause(false));
     on('quit', () => this.leaveMatch());
     on('settings-back', () => this.show('home'));
+    on('set-tutorial', () => Tutorial.open(true));
+    on('tut-next', () => Tutorial.next());
+    on('tut-skip', () => Tutorial.close());
     on('quests-back', () => this.show('home'));
     on('friends-back', () => { Net.close(); this._resetFriends(); this.show('home'); });
     this._wireFriends();
@@ -49,6 +52,10 @@ const UI = {
       }
       if ((k === 'p' || k === 'escape') && Game.state === 'playing') { this.togglePause(); return; }
       if (k === 'enter') {
+        if (!document.getElementById('tutorial').classList.contains('hidden')) {
+          Tutorial.next();
+          return;
+        }
         const onHome = !document.getElementById('home').classList.contains('hidden');
         const onResult = !document.getElementById('result').classList.contains('hidden');
         if (onHome || onResult) { this.startMatch(); return; }
@@ -56,9 +63,10 @@ const UI = {
       // Escape backs out of whatever menu is open, which is otherwise only
       // reachable by finding and clicking the Back button.
       if (k === 'escape') {
-        for (const id of ['brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends']) {
+        for (const id of ['brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'tutorial']) {
           if (!document.getElementById(id).classList.contains('hidden')) {
             if (id === 'friends' && typeof Net !== 'undefined') Net.close();
+            if (id === 'tutorial') { Tutorial.close(); return; }
             this.show('home');
             return;
           }
@@ -97,7 +105,7 @@ const UI = {
     document.getElementById('game').classList.toggle('hidden', !overMatch);
     if (overMatch) Backdrop.stop(); else Backdrop.start();
 
-    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused', 'tutorial']) {
       document.getElementById(id).classList.toggle('hidden', id !== which);
     }
     if (which === 'home') this._refreshHome();
@@ -254,9 +262,11 @@ const UI = {
         </div>
         <div class="ctip">${b.tip}</div>
         <div class="plevel"><span class="pnum"></span><span class="pbar"><span></span></span></div>
-        <button class="upbtn"></button>`;
+        <div class="mastery"><i class="mbadge"></i><span class="mbar"><i></i></span><b class="mnum"></b></div>
+        <button class="upbtn"></button>
+        <button class="trybtn">TRY IN RANGE</button>`;
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.upbtn')) return;      // upgrading is not picking
+        if (e.target.closest('.upbtn') || e.target.closest('.trybtn')) return;
         if (!Progress.isUnlocked(b.id)) {            // locked: send them to the road
           this._buildRoad();
           this.show('road');
@@ -278,11 +288,36 @@ const UI = {
           this._refreshHome();
         }
       });
+      // The range is where you find out whether you want a fighter, so it is
+      // deliberately open to the ones you have not bought.
+      card.querySelector('.trybtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.brawler = b.id;
+        this.mode = 'practice';
+        this.startMatch();
+      });
       grid.appendChild(card);
       paintPortrait(card.querySelector('.portrait'),
         skinnedDef(b, Progress.equippedSkin(b.id)), 1);
       this._paintPower(card, b);
+      this._paintMastery(card, b);
     }
+  },
+
+  /* Mastery badge and the bar toward the next one. */
+  _paintMastery(card, b) {
+    const badge = card.querySelector('.mbadge');
+    if (!badge) return;
+    const pts = Progress.masteryOf(b.id);
+    const tier = masteryTier(pts);
+    const none = tier.id === 'none';
+    badge.style.background = none ? 'transparent' : tier.color;
+    const num = card.querySelector('.mnum');
+    num.textContent = none ? `${pts}` : `${tier.name} \u00b7 ${pts.toLocaleString()}`;
+    num.style.color = none ? 'var(--muted)' : tier.color;
+    const bar = card.querySelector('.mbar i');
+    bar.style.width = `${Math.round(masteryProgress(pts) * 100)}%`;
+    bar.style.background = none ? '#6b5b95' : tier.color;
   },
 
   /* ---------------- Recruit Track ---------------- */
@@ -418,7 +453,7 @@ const UI = {
   startMatch() {
     Backdrop.stop();
     document.getElementById('game').classList.remove('hidden');
-    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
+    for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused', 'tutorial']) {
       document.getElementById(id).classList.add('hidden');
     }
     this._rollMap();
@@ -460,6 +495,36 @@ const UI = {
       rc.translate(rb.width / 2, rb.height / 2);
       drawRankBadge(rc, 44, r.tier);
       rc.restore();
+    }
+
+    // Mastery with the fighter you actually played. A badge crossed mid-match
+    // is the headline; otherwise it is just the bar creeping forward.
+    const mg = document.getElementById('mastery-gain');
+    const gain = Game.masteryGain || 0;
+    mg.classList.toggle('hidden', !gain || !Game.player);
+    if (gain && Game.player) {
+      const before = Game.masteryBefore || 0;
+      const now = before + gain;
+      const tier = masteryTier(now);
+      const promoted = tier !== masteryTier(before);
+      document.getElementById('mgain-title').textContent =
+        promoted ? `${tier.name} Mastery — ${Game.player.def.name}!`
+          : `${Game.player.def.name} Mastery`;
+      document.getElementById('mgain-fill').style.width =
+        `${Math.round(masteryProgress(now) * 100)}%`;
+      document.getElementById('mgain-fill').style.background = tier.color;
+      const next = MASTERY_TIERS[MASTERY_TIERS.indexOf(tier) + 1];
+      document.getElementById('mgain-sub').textContent = next
+        ? `+${gain} · ${(next.at - now).toLocaleString()} to ${next.name}`
+        : `+${gain} · ${now.toLocaleString()} total`;
+      mg.classList.toggle('promoted', promoted);
+      const mb = document.getElementById('mgain-badge');
+      const mc = mb.getContext('2d');
+      mc.clearRect(0, 0, mb.width, mb.height);
+      mc.save();
+      mc.translate(mb.width / 2, mb.height / 2);
+      drawMasteryBadge(mc, 30, tier);
+      mc.restore();
     }
 
     // What this match moved along, so daily progress is visible where it was
@@ -612,7 +677,7 @@ const UI = {
     };
 
     Net.onInit = (init) => {
-      for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
+      for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused', 'tutorial']) {
         document.getElementById(id).classList.add('hidden');
       }
       Game.startAsGuest(init);
@@ -701,7 +766,11 @@ function dmgLabel(a, mult) {
 
 UI._paintAllPower = function () {
   const grid = document.getElementById('brawler-grid');
-  for (const el of grid.children) this._paintPower(el, BRAWLER_BY_ID[el.dataset.id]);
+  for (const el of grid.children) {
+    const def = BRAWLER_BY_ID[el.dataset.id];
+    this._paintPower(el, def);
+    this._paintMastery(el, def);
+  }
 };
 
 /* Copy a code box to the clipboard, with a fallback for insecure origins. */
@@ -895,6 +964,18 @@ function paintModeIcon(canvas, mode) {
       ctx.stroke();
       break;
     }
+    case 'target': {
+      for (const [r, col] of [[32, '#f8fafc'], [22, '#fb7185'], [11, '#f8fafc']]) {
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+        ctx.strokeStyle = '#3b1f14';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      break;
+    }
     case 'rank': {
       drawRankBadge(ctx, 34, Ranked.tier());
       break;
@@ -937,5 +1018,7 @@ window.addEventListener('load', () => {
   UI.init();
   Game._last = performance.now();
   requestAnimationFrame((t) => Game.frame(t));
+  // An invite link is not a first run: somebody is waiting at the other end.
+  if (Tutorial.shouldShow() && !location.search) Tutorial.open();
   joinFromUrl();
 });

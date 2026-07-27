@@ -45,6 +45,73 @@ const DROP_RARITIES = [
   { id: 'legendary', name: 'Legendary', color: '#fbbf24', up: 0 },
 ];
 
+/*
+ * Mastery. Every match a fighter plays banks points toward a badge, so time
+ * spent on one shows somewhere rather than evaporating. It pays nothing —
+ * power levels are the reward track — which is the point: it is a record of
+ * what you have actually played, not another currency to farm.
+ */
+const MASTERY_TIERS = [
+  { id: 'none', name: '', at: 0, color: '#6b5b95' },
+  { id: 'bronze', name: 'Bronze', at: 500, color: '#c07a45' },
+  { id: 'silver', name: 'Silver', at: 1800, color: '#b9c4cf' },
+  { id: 'gold', name: 'Gold', at: 5000, color: '#f0b429' },
+  { id: 'diamond', name: 'Diamond', at: 12000, color: '#4fd1e5' },
+  { id: 'master', name: 'Master', at: 26000, color: '#a855f7' },
+];
+
+function masteryTier(points) {
+  let out = MASTERY_TIERS[0];
+  for (const t of MASTERY_TIERS) if (points >= t.at) out = t;
+  return out;
+}
+
+/* Where this fighter sits inside its current badge, 0..1. */
+function masteryProgress(points) {
+  const i = MASTERY_TIERS.indexOf(masteryTier(points));
+  if (i === MASTERY_TIERS.length - 1) return 1;
+  const from = MASTERY_TIERS[i].at, to = MASTERY_TIERS[i + 1].at;
+  return clamp((points - from) / (to - from), 0, 1);
+}
+
+/*
+ * The mastery badge: a rotated diamond with a star cut into it, filled in the
+ * tier colour. Drawn rather than written so it reads at 15px on a roster card
+ * and at 72px on the result screen without two sets of assets.
+ */
+function drawMasteryBadge(ctx, r, tier) {
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const cut = r * 0.26;
+  ctx.moveTo(0, -r);
+  ctx.quadraticCurveTo(cut, -cut, r, 0);
+  ctx.quadraticCurveTo(cut, cut, 0, r);
+  ctx.quadraticCurveTo(-cut, cut, -r, 0);
+  ctx.quadraticCurveTo(-cut, -cut, 0, -r);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, -r, 0, r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.35, tier.color);
+  g.addColorStop(1, tier.color);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(24,12,34,.8)';
+  ctx.lineWidth = Math.max(2, r * 0.14);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(28,14,40,.55)';
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5;
+    const rr = i % 2 ? r * 0.16 : r * 0.38;
+    ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 const Progress = {
   coins: 0,
   brawlers: {},        // id -> { level, points }
@@ -54,6 +121,7 @@ const Progress = {
   unlocked: {},        // id -> true
   skins: {},           // id -> { skinId: true }
   equipped: {},        // id -> skinId
+  mastery: {},         // id -> points
 
   load() {
     try {
@@ -73,7 +141,8 @@ const Progress = {
     try {
       localStorage.setItem('scrapstars.progress', JSON.stringify({
         coins: this.coins, brawlers: this.brawlers, drops: this.drops, opened: this.opened,
-        credits: this.credits, unlocked: this.unlocked, skins: this.skins, equipped: this.equipped,
+        credits: this.credits, unlocked: this.unlocked, skins: this.skins,
+        equipped: this.equipped, mastery: this.mastery,
       }));
     } catch (e) { /* nothing worth breaking play over */ }
   },
@@ -90,7 +159,7 @@ const Progress = {
       frank: 'sledge',
     };
     for (const [was, now] of Object.entries(RENAMED)) {
-      for (const bag of [this.brawlers, this.unlocked, this.skins, this.equipped]) {
+      for (const bag of [this.brawlers, this.unlocked, this.skins, this.equipped, this.mastery]) {
         if (bag && bag[was] !== undefined) {
           if (bag[now] === undefined) bag[now] = bag[was];
           delete bag[was];
@@ -101,6 +170,22 @@ const Progress = {
 
   of(id) { return this.brawlers[id] || (this.brawlers[id] = { level: 1, points: 0 }); },
   level(id) { return this.of(id).level; },
+
+  /* ---------------- mastery ---------------- */
+
+  masteryOf(id) { return this.mastery[id] || 0; },
+
+  /*
+   * Banked from what the match actually asked of you rather than from time
+   * served, so a good ten minutes counts for more than an idle twenty.
+   */
+  addMastery(id, { damage = 0, kills = 0, won = false, mvp = false }) {
+    if (!id) return 0;
+    const gained = Math.round(damage / 60) + kills * 25 + (won ? 60 : 20) + (mvp ? 50 : 0);
+    this.mastery[id] = this.masteryOf(id) + gained;
+    this.save();
+    return gained;
+  },
 
   /* ---------------- collection ---------------- */
 

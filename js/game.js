@@ -74,6 +74,11 @@ const Game = {
     this.paused = false;
     this.result = null;
     this.tickParity = 0;
+    // Cleared here so a practice run — which never finishes — cannot leave the
+    // previous match's rewards sitting on the result screen.
+    this.questGains = [];
+    this.masteryGain = 0;
+    this.masteryBefore = 0;
 
     GameMap.generate(this.mapDef.style);
 
@@ -86,6 +91,7 @@ const Game = {
     const pool = BRAWLERS.filter((b) => b.id !== brawlerId);
     const takeDef = () => pool.splice(randInt(0, pool.length - 1), 1)[0] || pick(BRAWLERS);
 
+    this.practice = this.mode.id === 'practice';
     const mine = BRAWLER_BY_ID[brawlerId] || BRAWLERS[0];
     this.player = new Brawler(skinnedDef(mine, Progress.equippedSkin(mine.id)), this.playerTeam, false, 'You');
     this.brawlers.push(this.player);
@@ -262,6 +268,8 @@ const Game = {
     // same snapshot, then everyone acts.
     for (const b of this.brawlers) {
       if (b.isBot && b.alive) updateBot(b, this, dt);
+      // Practice dummies have no brain and no hands.
+      if (b.isDummy) { b.input.mx = 0; b.input.my = 0; b.input.fire = false; b.input.super = false; }
     }
 
     // Alternate who acts first so neither side is permanently ahead on
@@ -660,6 +668,10 @@ const Game = {
   },
 
   respawn(b) {
+    if (this.mode.onRespawn) {
+      this.mode.onRespawn(this, b);
+      if (b.alive) { this.burst(b.x, b.y, TEAM_COLOR[b.team], 14); return; }
+    }
     if (this.noRespawn) { b.respawnTimer = 999; return; }
     const spawns = GameMap.spawns[b.team];
     let best = spawns[0], bestScore = -Infinity;
@@ -731,6 +743,9 @@ const Game = {
   shake(mag) { Renderer.shake(mag); },
 
   finish(winner) {
+    // Nothing is at stake in the range, so it never ends on its own and never
+    // pays out. Leaving is the only way out, which is what Leave Match is for.
+    if (this.practice) return;
     // The outro deliberately stays in 'playing' so the world keeps drawing, so
     // the guard has to be the outro itself — a mode that keeps scoring during
     // it would otherwise restart the ending on every frame.
@@ -750,6 +765,12 @@ const Game = {
         ((b.damageDealt || 0) + b.kills * 1200 - b.deaths * 300) >
         ((a.damageDealt || 0) + a.kills * 1200 - a.deaths * 300) ? b : a);
       this.questGains = Quests.recordMatch(this, winner === this.playerTeam, best === this.player);
+      const p = this.player;
+      this.masteryBefore = Progress.masteryOf(p.def.id);
+      this.masteryGain = Progress.addMastery(p.def.id, {
+        damage: p.damageDealt || 0, kills: p.kills,
+        won: winner === this.playerTeam, mvp: best === p,
+      });
     }
     Sfx.play(winner === this.playerTeam ? 'win' : 'lose');
   },
