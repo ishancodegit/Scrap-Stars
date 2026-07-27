@@ -13,7 +13,9 @@ const UI = {
     this._buildBrawlers();
     this._buildModes();
     this._rollMap();
-    this._refreshHome();
+    // Go through show() so the arena canvas and the scenery start in the same
+    // state a normal navigation would leave them in.
+    this.show('home');
 
     on('play', () => this.startMatch());
     on('again', () => this.startMatch());
@@ -45,7 +47,23 @@ const UI = {
         const muted = Sfx.toggle();
         document.getElementById('muted').textContent = muted ? 'Sound: off (M)' : 'Sound: on (M)';
       }
-      if ((k === 'p' || k === 'escape') && Game.state === 'playing') this.togglePause();
+      if ((k === 'p' || k === 'escape') && Game.state === 'playing') { this.togglePause(); return; }
+      if (k === 'enter') {
+        const onHome = !document.getElementById('home').classList.contains('hidden');
+        const onResult = !document.getElementById('result').classList.contains('hidden');
+        if (onHome || onResult) { this.startMatch(); return; }
+      }
+      // Escape backs out of whatever menu is open, which is otherwise only
+      // reachable by finding and clicking the Back button.
+      if (k === 'escape') {
+        for (const id of ['brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends']) {
+          if (!document.getElementById(id).classList.contains('hidden')) {
+            if (id === 'friends' && typeof Net !== 'undefined') Net.close();
+            this.show('home');
+            return;
+          }
+        }
+      }
     });
   },
 
@@ -66,8 +84,19 @@ const UI = {
     this.show('home');
   },
 
+  /*
+   * Screens that sit over a live or just-finished match keep the arena behind
+   * them; everything else is a menu and belongs over the scenery.
+   */
+  OVER_MATCH: ['result', 'paused'],
+
   show(which) {
-    Backdrop.start();
+    const overMatch = this.OVER_MATCH.includes(which);
+    // The arena canvas holds its last frame forever once drawing stops, so
+    // leaving a match left the finished board sitting behind the menus.
+    document.getElementById('game').classList.toggle('hidden', !overMatch);
+    if (overMatch) Backdrop.stop(); else Backdrop.start();
+
     for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.toggle('hidden', id !== which);
     }
@@ -388,6 +417,7 @@ const UI = {
 
   startMatch() {
     Backdrop.stop();
+    document.getElementById('game').classList.remove('hidden');
     for (const id of ['home', 'brawlers', 'modes', 'road', 'skins', 'quests', 'settings', 'friends', 'result', 'paused']) {
       document.getElementById(id).classList.add('hidden');
     }

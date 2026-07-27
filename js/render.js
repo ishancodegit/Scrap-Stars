@@ -999,7 +999,7 @@ const Renderer = {
   _drawCountdown(ctx, game, w, h) {
     if (game.countdown <= 0) return;
     const n = Math.ceil(game.countdown - 0.2);
-    const label = n <= 0 ? 'GO!' : String(n);
+    const label = n <= 0 ? GO_WORD : String(n);
     const frac = (game.countdown - 0.2) % 1;
     const pop = 1 - Math.min(1, frac);
     ctx.save();
@@ -1012,11 +1012,19 @@ const Renderer = {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
-    ctx.font = '900 96px ui-rounded, system-ui, sans-serif';
+    const size = n <= 0 ? Math.min(96, w * 0.72 / GO_WORD.length * 1.6) : 96;
+    ctx.font = `900 ${Math.round(size)}px ui-rounded, system-ui, sans-serif`;
     ctx.strokeStyle = '#12071f';
     ctx.lineWidth = 16;
     ctx.strokeText(label, 0, 0);
-    ctx.fillStyle = label === 'GO!' ? '#4ade80' : '#ffc738';
+    if (n <= 0) {
+      const g = ctx.createLinearGradient(0, -size * 0.5, 0, size * 0.5);
+      g.addColorStop(0, '#eaffd0');
+      g.addColorStop(1, '#4ade80');
+      ctx.fillStyle = g;
+    } else {
+      ctx.fillStyle = '#ffc738';
+    }
     ctx.fillText(label, 0, 0);
     ctx.restore();
   },

@@ -80,6 +80,9 @@ html, body {
 /* Taken off the page entirely during a match — it is menu scenery, and even
    underneath the arena it would be a full-screen canvas composited for nothing. */
 #backdrop.hidden { display: none !important; }
+/* Same reasoning in reverse: a canvas keeps its last frame, so the arena has
+   to be taken off the page on the menus or it shows through them. */
+#game.hidden { display: none !important; }
 
 .overlay {
   position: fixed;

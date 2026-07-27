@@ -103,6 +103,7 @@ const EMOTES = [
 
 /* Match bookends. */
 const INTRO_SECONDS = 2.3;      // team lineup card before the countdown
+const GO_WORD = 'SCRAP!';       // what 3-2-1 lands on
 const OUTRO_SECONDS = 2.6;      // slow-motion beat before the result screen
 const OUTRO_SLOWMO = 0.18;      // how far time is dilated during it
 
